@@ -5,151 +5,112 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>考卷</title>
   <style>
-    body { font-family: sans-serif; background: #f3f4f6; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; }
+    body { font-family: sans-serif; background: #f3f4f6; padding: 16px; }
+    .container { max-width: 640px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; }
     .header { background: #3b82f6; color: white; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 20px; }
-    .q-box { background: #f9fafb; border: 2px solid #e5e7eb; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .header h1 { font-size: 22px; margin: 0; }
+    .q-box { background: #f9fafb; border: 2px solid #e5e7eb; padding: 14px; border-radius: 8px; margin-bottom: 16px; line-height: 1.9; }
     .badge { background: #3b82f6; color: white; font-size: 12px; padding: 2px 6px; border-radius: 4px; margin-right: 8px; }
-    .blank-input { width: 60px; height: 28px; text-align: center; border: 2px solid #86efac; border-radius: 4px; }
-    .name-input { width: 100%; box-sizing: border-box; padding: 10px; font-size: 16px; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 20px; }
-    .explain { display: none; margin-top: 12px; padding: 10px; background: #eff6ff; border-radius: 6px; }
+    .blank-input { width: 64px; height: 30px; text-align: center; border: 2px solid #86efac; border-radius: 4px; font-size: 16px; }
+    .name-input, textarea { width: 100%; box-sizing: border-box; padding: 10px; font-size: 16px; border: 1px solid #d1d5db; border-radius: 6px; }
+    .name-input { margin-bottom: 16px; }
+    label.opt { display: block; padding: 4px 0; cursor: pointer; }
     .btn-submit { background: #2563eb; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; }
-    .score-board { display: none; text-align: center; font-size: 22px; font-weight: bold; color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 8px; }
-    .status { text-align: center; margin-top: 12px; font-size: 15px; }
-    .correct-q { border-color: #22c55e !important; }
-    .wrong-q { border-color: #ef4444 !important; }
-    .input-wrong { border-color: #ef4444 !important; background: #fee2e2 !important; }
-    .input-correct { border-color: #22c55e !important; background: #dcfce7 !important; }
+    .btn-submit:disabled { opacity: .5; }
+    .score-board { text-align: center; font-size: 22px; font-weight: bold; color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 8px; margin-bottom: 16px; }
+    .status { text-align: center; margin-top: 12px; }
+    .okq { border-color: #22c55e; } .midq { border-color: #f59e0b; } .badq { border-color: #ef4444; }
+    .ok { background: #dcfce7; padding: 1px 8px; border-radius: 4px; font-weight: bold; }
+    .bad { background: #fee2e2; padding: 1px 8px; border-radius: 4px; font-weight: bold; }
+    .muted { color: #6b7280; font-size: 14px; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header"><h1 id="exam-title">載入中...</h1></div>
-    <form id="quiz-form">
-      <input id="student-name" class="name-input" placeholder="請輸入你的名字" required>
-      <div id="questions-container"></div>
-      <div id="score-board" class="score-board"></div>
-      <div id="status" class="status"></div>
-      <button type="submit" id="submit-btn" class="btn-submit" style="margin-top:20px;">繳交考卷</button>
-    </form>
+    <div id="main"></div>
+    <div id="status" class="status"></div>
   </div>
 
   <script>
-    // ===== 1. 只需要改這一行：貼上你的 Project URL =====
-    // 在 Supabase：Project Settings → API → Project URL（格式：https://xxxxxxxx.supabase.co）
-    const SUPABASE_URL = 'https://kxrtesreuuaumdikeqrv.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_1NB_TggvO0cURnJaIT7D6g_791CoJLD';
+    const API = 'https://kxrtesreuuaumdikeqrv.supabase.co/functions/v1/api';
+    const KEY = 'sb_publishable_1NB_TggvO0cURnJaIT7D6g_791CoJLD';
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const L = 'ABCD';
+    const examId = new URLSearchParams(location.search).get('exam_id');
+    const main = document.getElementById('main'), statusEl = document.getElementById('status');
+    let exam = null;
 
-    // ===== 2. 題庫（key 要和 parent.html 產生的 exam_id 一致）=====
-    const EXAMS = {
-      g3_math_unit_01: {
-        title: "三年級數學 - 綜合單元測驗",
-        questions: [
-          { id: 1, question: "15 減 3 是多少？再加 5 是多少？", guide_template: "第一步： 15 - 3 = [blank] ； 第二步： [blank] + 5 = [blank]", correct_answer: ["12", "12", "17"], explain: "15 - 3 = 12，12 + 5 = 17。" }
-        ]
-      },
-      g3_math_unit_02: {
-        title: "三年級數學 - 分數與小數大小比較",
-        questions: [
-          { id: 1, question: "在 □ 填入 >、< 或 =：", guide_template: "0.6 [blank] 0.58", correct_answer: [">"], explain: "0.6 = 0.60，比 0.58 大。" },
-          { id: 2, question: "在 □ 填入 >、< 或 =：", guide_template: "3/5 [blank] 4/5", correct_answer: ["<"], explain: "分母相同，分子越大分數越大。" }
-        ]
-      }
-    };
-
-    const examId = new URLSearchParams(location.search).get('exam_id') || 'g3_math_unit_01';
-    const examData = EXAMS[examId];
-    const container = document.getElementById('questions-container');
-    const statusEl = document.getElementById('status');
-
-    if (!examData) {
-      document.getElementById('exam-title').innerText = "找不到這份考卷";
-      document.getElementById('quiz-form').style.display = 'none';
-    } else {
-      document.getElementById('exam-title').innerText = examData.title;
-      examData.questions.forEach((q, index) => {
-        const qDiv = document.createElement('div');
-        qDiv.className = "q-box";
-        qDiv.id = `q-box-${q.id}`;
-        let blankIndex = 0;
-        const tpl = q.guide_template.replace(/\[blank\]/g, () =>
-          `<input type="text" name="q-${q.id}[]" class="blank-input" required data-blank="${blankIndex++}" autocomplete="off" />`);
-        qDiv.innerHTML =
-          `<div><span class="badge">第 ${index + 1} 題</span><b>${q.question}</b></div><br>` +
-          `<div style="line-height:2;">${tpl}</div>` +
-          `<div id="explain-${q.id}" class="explain"><b>解析：</b>${q.explain || ''}</div>`;
-        container.appendChild(qDiv);
-      });
+    async function call(body) {
+      const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': KEY }, body: JSON.stringify(body) });
+      let d; try { d = await r.json(); } catch (e) { throw new Error('HTTP ' + r.status); }
+      if (!r.ok) throw new Error(d.error || d.message || ('HTTP ' + r.status));
+      return d;
     }
 
-    // 上傳成績：會真的檢查回應，失敗時顯示原因
-    async function uploadResultToCloud(payload) {
-      statusEl.style.color = '#374151';
-      statusEl.innerText = '成績上傳中...';
-      try {
-        const res = await fetch(SUPABASE_URL + '/rest/v1/exam_results', {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) {
-          const detail = await res.text();
-          throw new Error('HTTP ' + res.status + ' ' + detail);
+    function resultCard(r, i) {
+      const cls = r.ok ? 'okq' : (r.got > 0 ? 'midq' : 'badq'), icon = r.ok ? '✅' : (r.got > 0 ? '🟡' : '❌');
+      let body = '';
+      if (r.type === 'blank') {
+        const parts = String(r.template).split('[blank]');
+        body = '<div>' + parts.map((p, j) => esc(p) + (j < r.correct.length
+          ? `<span class="${String(r.given[j] || '').trim() === String(r.correct[j]).trim() ? 'ok' : 'bad'}">${esc(r.given[j] || '（空白）')}</span>` : '')).join('') + '</div>';
+        if (!r.ok) body += `<div>正確答案：<b>${esc(r.correct.join('、'))}</b></div>`;
+      } else if (r.type === 'mc') {
+        body = r.options.map((o, j) => `<div>${L[j]}. ${esc(o)} ${j === r.given ? '👈 你選的' : ''} ${j === r.correct ? '✔ 正確答案' : ''}</div>`).join('');
+      } else {
+        body = `<div>你的答案：${esc(r.given || '（空白）')}</div><div>參考答案：<b>${esc(r.correct)}</b></div>`;
+      }
+      return `<div class="q-box ${cls}"><div><span class="badge">第 ${i + 1} 題</span><b>${icon} ${esc(r.question)}</b> <span class="muted">(${r.got}/${r.max} 分)</span></div>${body}` +
+        (r.comment ? `<div class="muted">講評：${esc(r.comment)}</div>` : '') + (r.explain ? `<div class="muted">解析：${esc(r.explain)}</div>` : '') + '</div>';
+    }
+
+    function render() {
+      document.getElementById('exam-title').innerText = exam.title;
+      let h = '<input id="name" class="name-input" placeholder="請輸入你的名字" maxlength="30">';
+      exam.questions.forEach((q, i) => {
+        h += `<div class="q-box"><div><span class="badge">第 ${i + 1} 題</span><b>${esc(q.q)}</b> <span class="muted">(${q.points} 分)</span></div>`;
+        if (q.type === 'blank') {
+          let b = 0;
+          h += '<div>' + esc(q.template).replace(/\[blank\]/g, () => `<input class="blank-input" data-q="${i}" data-b="${b++}" autocomplete="off">`) + '</div>';
+        } else if (q.type === 'mc') {
+          h += q.options.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" value="${j}"> ${L[j]}. ${esc(o)}</label>`).join('');
+        } else {
+          h += `<textarea rows="2" data-q="${i}" placeholder="請寫下答案"></textarea>`;
         }
-        statusEl.style.color = '#16a34a';
-        statusEl.innerText = '🎉 成績已回傳給家長囉！';
-      } catch (err) {
-        statusEl.style.color = '#dc2626';
-        statusEl.innerText = '回傳失敗：' + err.message;
-        console.error(err);
+        h += '</div>';
+      });
+      main.innerHTML = h + '<button id="go" class="btn-submit">繳交考卷</button>';
+      document.getElementById('go').onclick = submit;
+    }
+
+    async function submit() {
+      const name = document.getElementById('name').value.trim();
+      if (!name) { statusEl.style.color = '#dc2626'; statusEl.innerText = '請先輸入名字'; return; }
+      const answers = exam.questions.map((q, i) => {
+        if (q.type === 'blank') return [...document.querySelectorAll(`input[data-q="${i}"]`)].map(x => x.value.trim());
+        if (q.type === 'mc') { const r = document.querySelector(`input[name="q${i}"]:checked`); return r ? Number(r.value) : null; }
+        return document.querySelector(`textarea[data-q="${i}"]`).value.trim();
+      });
+      const empty = answers.some(a => a === null || a === '' || (Array.isArray(a) && a.some(x => x === '')));
+      if (empty && !confirm('還有題目沒作答，確定要繳交嗎？')) return;
+      const btn = document.getElementById('go'); btn.disabled = true;
+      statusEl.style.color = '#374151'; statusEl.innerText = '批改中，請稍候…';
+      try {
+        const res = await call({ action: 'submit', exam_id: examId, name, answers });
+        main.innerHTML = `<div class="score-board">${esc(name)} 的得分：${res.score} / ${res.total} 分</div>` + res.results.map(resultCard).join('');
+        statusEl.style.color = '#16a34a'; statusEl.innerText = '🎉 成績已回傳給家長囉！';
+        window.scrollTo(0, 0);
+      } catch (e) {
+        btn.disabled = false; statusEl.style.color = '#dc2626'; statusEl.innerText = '繳交失敗：' + e.message;
       }
     }
 
-    // 批改：每一題各自判斷；整份分數 = 答對題數 / 總題數
-    document.getElementById('quiz-form').addEventListener('submit', function (e) {
-      e.preventDefault();
-      let correctCount = 0;
-      const historyAnswers = {};
-
-      examData.questions.forEach((q) => {
-        const qBox = document.getElementById(`q-box-${q.id}`);
-        const inputs = document.querySelectorAll(`input[name="q-${q.id}[]"]`);
-        let qCorrect = true;
-        const given = [];
-
-        inputs.forEach((input, i) => {
-          const val = input.value.trim();
-          given.push(val);
-          const ok = val === q.correct_answer[i];
-          input.className = 'blank-input ' + (ok ? 'input-correct' : 'input-wrong');
-          input.readOnly = true;
-          if (!ok) qCorrect = false;
-        });
-
-        if (qCorrect) correctCount++;
-        historyAnswers[`q_${q.id}`] = { question: q.question, template: q.guide_template, given: given, correct: q.correct_answer, ok: qCorrect, explain: q.explain || '' };
-        qBox.classList.add(qCorrect ? 'correct-q' : 'wrong-q');
-        document.getElementById(`explain-${q.id}`).style.display = 'block';
-      });
-
-      const finalScore = Math.round(correctCount / examData.questions.length * 100);
-      const board = document.getElementById('score-board');
-      board.innerText = `您的得分：${finalScore} 分（答對 ${correctCount} / ${examData.questions.length} 題）`;
-      board.style.display = 'block';
-      document.getElementById('submit-btn').style.display = 'none';
-
-      uploadResultToCloud({
-        exam_id: examId,
-        student_name: document.getElementById('student-name').value.trim(),
-        score: finalScore,
-        answers: historyAnswers
-      });
-    });
+    (async () => {
+      if (!examId) { document.getElementById('exam-title').innerText = '找不到這份考卷'; return; }
+      try { exam = await call({ action: 'get', exam_id: examId }); render(); }
+      catch (e) { document.getElementById('exam-title').innerText = '載入失敗'; statusEl.style.color = '#dc2626'; statusEl.innerText = e.message; }
+    })();
   </script>
 </body>
 </html>
