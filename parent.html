@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>線上考卷產生器 - 家長管理後台</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f3f4f6; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto 20px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 25px; border: 1px solid #e5e7eb; }
+    h1 { color: #1e3a8a; margin-top: 0; font-size: 22px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; color: #374151; }
+    select, input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+    .btn { background: #10b981; color: white; font-weight: bold; padding: 12px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
+    .btn:hover { background: #059669; }
+    .btn-sm { background: #3b82f6; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    .result-box { display: none; margin-top: 20px; padding: 15px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; }
+    .link-text { background: white; padding: 8px; border: 1px solid #93c5fd; border-radius: 4px; word-break: break-all; font-family: monospace; font-size: 14px; margin: 8px 0; color: #1e40af; }
+    .rec { border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+    .rec-head { display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; background: #f9fafb; gap: 8px; }
+    .score { font-size: 20px; font-weight: bold; }
+    .good { color: #16a34a; } .mid { color: #d97706; } .low { color: #dc2626; }
+    .detail { display: none; padding: 12px; }
+    .qd { padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px; line-height: 1.9; }
+    .qd.okq { border-color: #22c55e; } .qd.badq { border-color: #ef4444; }
+    .ok { background: #dcfce7; padding: 1px 8px; border-radius: 4px; font-weight: bold; }
+    .bad { background: #fee2e2; padding: 1px 8px; border-radius: 4px; font-weight: bold; }
+    .muted { color: #6b7280; font-size: 14px; }
+    .err { color: #dc2626; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>📝 家長出題控制台</h1>
+
+    <div class="form-group">
+      <label for="grade">選擇年級：</label>
+      <select id="grade" onchange="updateUnits()">
+        <option value="3">國小三年級</option>
+        <option value="4">國小四年級</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="subject">選擇科目：</label>
+      <select id="subject"><option value="math">數學</option></select>
+    </div>
+
+    <div class="form-group">
+      <label for="unit">選擇考試單元範圍：</label>
+      <select id="unit">
+        <option value="unit_01">三年級數學 - 綜合單元測驗</option>
+        <option value="unit_02">三年級數學 - 分數與小數大小比較</option>
+      </select>
+    </div>
+
+    <button class="btn" onclick="generateExamLink()">✨ 一鍵產生小孩考卷連結</button>
+
+    <div id="result-box" class="result-box">
+      <strong style="color: #1e40af;">🎉 考卷連結已成功產出！</strong>
+      <p style="font-size: 14px; color: #4b5563; margin: 5px 0;">請複製下方連結，直接傳給小朋友作答：</p>
+      <div id="exam-link" class="link-text"></div>
+      <button class="btn-sm" onclick="copyLink()">📋 複製連結</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>📊 小孩成績紀錄 <button class="btn-sm" style="float:right" onclick="loadResults()">重新整理</button></h1>
+    <div id="results">載入中...</div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://kxrtesreuuaumdikeqrv.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_1NB_TggvO0cURnJaIT7D6g_791CoJLD';
+
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const EXAM_NAMES = {
+      g3_math_unit_01: '三年級數學 - 綜合單元測驗',
+      g3_math_unit_02: '三年級數學 - 分數與小數大小比較'
+    };
+
+    // ---------- 成績顯示 ----------
+    async function loadResults() {
+      const box = document.getElementById('results');
+      box.textContent = '載入中...';
+      try {
+        const res = await fetch(SUPABASE_URL + '/rest/v1/exam_results?select=*&order=created_at.desc&limit=50', {
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + await res.text());
+        const rows = await res.json();
+        if (!rows.length) { box.innerHTML = '<div class="muted">目前還沒有人繳交考卷。</div>'; return; }
+        box.innerHTML = rows.map((r, i) => {
+          const cls = r.score >= 80 ? 'good' : r.score >= 60 ? 'mid' : 'low';
+          const t = r.created_at ? new Date(r.created_at).toLocaleString('zh-TW') : '';
+          return `<div class="rec">
+            <div class="rec-head" onclick="toggle(${i})">
+              <div><b>${esc(r.student_name || '（未填姓名）')}</b><br><span class="muted">${esc(EXAM_NAMES[r.exam_id] || r.exam_id)} · ${esc(t)}</span></div>
+              <div class="score ${cls}">${esc(r.score)} 分</div>
+            </div>
+            <div class="detail" id="d${i}">${renderAnswers(r.answers)}</div>
+          </div>`;
+        }).join('');
+      } catch (e) {
+        box.innerHTML = '<div class="err">讀取失敗：' + esc(e.message) + '</div>';
+      }
+    }
+
+    function toggle(i) {
+      const d = document.getElementById('d' + i);
+      d.style.display = d.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function renderAnswers(a) {
+      if (!a || typeof a !== 'object') return '<div class="muted">沒有作答內容。</div>';
+      const keys = Object.keys(a).sort((x, y) => parseInt(x.slice(2)) - parseInt(y.slice(2)));
+      return keys.map((k, n) => {
+        const q = a[k];
+        if (Array.isArray(q)) return `<div class="qd">第 ${n + 1} 題：${esc(q.join('、'))} <span class="muted">（舊格式資料，沒有詳細內容）</span></div>`;
+        const parts = String(q.template).split('[blank]');
+        const line = parts.map((p, j) => esc(p) + (j < q.given.length
+          ? `<span class="${q.given[j] === q.correct[j] ? 'ok' : 'bad'}">${esc(q.given[j] || '（空白）')}</span>` : '')).join('');
+        const fix = q.ok ? '' : `<div>正確答案：<b>${esc(q.correct.join('、'))}</b></div>`;
+        return `<div class="qd ${q.ok ? 'okq' : 'badq'}">
+          <div><b>第 ${n + 1} 題 ${q.ok ? '✅' : '❌'}</b>　${esc(q.question)}</div>
+          <div>${line}</div>${fix}
+          ${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    // ---------- 出題連結 ----------
+    function updateUnits() {
+      const grade = document.getElementById('grade').value;
+      const unitSelect = document.getElementById('unit');
+      unitSelect.innerHTML = "";
+      if (grade === "3") {
+        unitSelect.options.add(new Option("三年級數學 - 綜合單元測驗", "unit_01"));
+        unitSelect.options.add(new Option("三年級數學 - 分數與小數大小比較", "unit_02"));
+      } else if (grade === "4") {
+        unitSelect.options.add(new Option("四年級數學 - 四則運算進階測驗", "unit_01"));
+        unitSelect.options.add(new Option("四年級數學 - 乘除與公里公噸計算", "unit_02"));
+      }
+    }
+
+    function generateExamLink() {
+      const examId = `g${document.getElementById('grade').value}_${document.getElementById('subject').value}_${document.getElementById('unit').value}`;
+      let indexPath = window.location.href.split('?')[0].split('#')[0].replace('parent.html', 'index.html');
+      document.getElementById('exam-link').innerText = `${indexPath}?exam_id=${examId}`;
+      document.getElementById('result-box').style.display = 'block';
+    }
+
+    function copyLink() {
+      navigator.clipboard.writeText(document.getElementById('exam-link').innerText).then(() => {
+        alert('連結已成功複製到剪貼簿！可以傳給小朋友了。');
+      });
+    }
+
+    loadResults();
+  </script>
+</body>
+</html>
