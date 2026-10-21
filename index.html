@@ -38,6 +38,7 @@
     const clean = s => String(s).replace(/\$([^$]*\\[^$]*)\$/g, '$1').replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2').replace(/\\times/g, '×').replace(/\\div/g, '÷').replace(/\\cdot/g, '·').replace(/\\text\{([^{}]*)\}/g, '$1').replace(/\\[()\[\]]/g, '').replace(/[{}]/g, '');
     const esc = s => clean(String(s == null ? '' : s)).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const L = 'ABCD';
+    const qt = s => esc(s).replace(/\[blank\]/g, '＿＿');
     const examId = new URLSearchParams(location.search).get('exam_id');
     const main = document.getElementById('main'), statusEl = document.getElementById('status');
     let exam = null;
@@ -62,7 +63,7 @@
       } else {
         body = `<div>你的答案：${esc(r.given || '（空白）')}</div><div>參考答案：<b>${esc(r.correct)}</b></div>`;
       }
-      return `<div class="q-box ${cls}"><div><span class="badge">第 ${i + 1} 題</span><b>${icon} ${esc(r.question)}</b> <span class="muted">(${r.got}/${r.max} 分)</span></div>${body}` +
+      return `<div class="q-box ${cls}"><div><span class="badge">第 ${i + 1} 題</span><b>${icon} ${qt(r.question)}</b> <span class="muted">(${r.got}/${r.max} 分)</span></div>${body}` +
         (r.comment ? `<div class="muted">講評：${esc(r.comment)}</div>` : '') + (r.explain ? `<div class="muted">解析：${esc(r.explain)}</div>` : '') + '</div>';
     }
 
@@ -70,7 +71,7 @@
       document.getElementById('exam-title').innerText = exam.title;
       let h = '<input id="name" class="name-input" placeholder="請輸入你的名字" maxlength="30">';
       exam.questions.forEach((q, i) => {
-        h += `<div class="q-box"><div><span class="badge">第 ${i + 1} 題</span><b>${esc(q.q)}</b> <span class="muted">(${q.points} 分)</span></div>`;
+        h += `<div class="q-box"><div><span class="badge">第 ${i + 1} 題</span><b>${qt(q.q)}</b> <span class="muted">(${q.points} 分)</span></div>`;
         if (q.type === 'blank') {
           let b = 0;
           h += '<div>' + esc(q.template).replace(/\[blank\]/g, () => `<input class="blank-input" data-q="${i}" data-b="${b++}" autocomplete="off">`) + '</div>';

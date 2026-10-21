@@ -86,6 +86,7 @@
     const clean = s => String(s).replace(/\$([^$]*\\[^$]*)\$/g, '$1').replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2').replace(/\\times/g, '×').replace(/\\div/g, '÷').replace(/\\cdot/g, '·').replace(/\\text\{([^{}]*)\}/g, '$1').replace(/\\[()\[\]]/g, '').replace(/[{}]/g, '');
     const esc = s => clean(String(s == null ? '' : s)).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const L = 'ABCD';
+    const qt = s => esc(s).replace(/\[blank\]/g, '＿＿');
     let passcode = localStorage.getItem('pc') || '', draft = null;
 
     async function call(body) {
@@ -126,7 +127,7 @@
         if (q.type === 'blank') body = `<div>${esc(q.template)}</div><div>答案：<b>${esc(q.answer.join('、'))}</b></div>`;
         else if (q.type === 'mc') body = q.options.map((o, j) => `<div>${L[j]}. ${esc(o)} ${j === q.answer ? '✔' : ''}</div>`).join('');
         else body = `<div>參考答案：<b>${esc(q.answer)}</b></div>`;
-        return `<div class="qd ${q.flag ? 'flagq' : ''}"><div><b>${i + 1}. ${esc(q.q)}</b> <span class="muted">[${{ blank: '填空', mc: '選擇', short: '簡答' }[q.type]}]</span> ${q.flag ? '<b style="color:#d97706">⚠ 答案存疑</b>' : ''}</div>${body}${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}<button class="btn-sm btn-del" onclick="delQ(${i})">刪除這題</button></div>`;
+        return `<div class="qd ${q.flag ? 'flagq' : ''}"><div><b>${i + 1}. ${qt(q.q)}</b> <span class="muted">[${{ blank: '填空', mc: '選擇', short: '簡答' }[q.type]}]</span> ${q.flag ? '<b style="color:#d97706">⚠ 答案存疑</b>' : ''}</div>${body}${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}<button class="btn-sm btn-del" onclick="delQ(${i})">刪除這題</button></div>`;
       }).join('');
     }
     function delQ(i) { draft.questions.splice(i, 1); renderDraft(); }
@@ -155,7 +156,7 @@
       } else if (r.type === 'mc') {
         body = r.options.map((o, j) => `<div>${L[j]}. ${esc(o)} ${j === r.given ? '👈 作答' : ''} ${j === r.correct ? '✔ 正確' : ''}</div>`).join('');
       } else body = `<div>作答：${esc(r.given || '（空白）')}</div><div>參考答案：<b>${esc(r.correct)}</b></div>`;
-      return `<div class="qd ${cls}"><div><b>第 ${i + 1} 題 ${icon}</b> ${esc(r.question)} <span class="muted">(${r.got}/${r.max})</span></div>${body}` +
+      return `<div class="qd ${cls}"><div><b>第 ${i + 1} 題 ${icon}</b> ${qt(r.question)} <span class="muted">(${r.got}/${r.max})</span></div>${body}` +
         (r.comment ? `<div class="muted">講評：${esc(r.comment)}</div>` : '') + (r.explain ? `<div class="muted">解析：${esc(r.explain)}</div>` : '') + '</div>';
     }
     // 相容舊格式資料
