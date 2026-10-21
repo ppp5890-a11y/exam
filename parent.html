@@ -44,7 +44,7 @@
       <h1>📝 AI 出題</h1>
       <div class="row">
         <div><label>年級</label>
-          <select id="grade"><option>國小一年級</option><option>國小二年級</option><option selected>國小三年級</option><option>國小四年級</option><option>國小五年級</option><option>國小六年級</option><option>國中一年級</option><option>國中二年級</option><option>國中三年級</option></select></div>
+          <select id="grade" onchange="updateSubjects()"><option>國小一年級</option><option>國小二年級</option><option selected>國小三年級</option><option>國小四年級</option><option>國小五年級</option><option>國小六年級</option><option>國中一年級</option><option>國中二年級</option><option>國中三年級</option></select></div>
         <div><label>科目</label>
           <select id="subject"><option>數學</option><option>國語</option><option>自然</option><option>社會</option><option>英語</option></select></div>
       </div>
@@ -95,6 +95,21 @@
       if (!r.ok) throw new Error(d.error || d.message || ('HTTP ' + r.status));
       return d;
     }
+
+    // ---------- 科目依年級切換 ----------
+    const SUBJECTS = {
+      low: ['國語', '數學', '生活', '英語'],
+      mid: ['國語', '數學', '自然', '社會', '英語'],
+      jr: ['國文', '數學', '英語', '歷史', '地理', '公民', '理化', '生物', '地球科學']
+    };
+    function updateSubjects() {
+      const g = $('grade').value;
+      const set = g.startsWith('國中') ? SUBJECTS.jr : (/一年級|二年級/.test(g) ? SUBJECTS.low : SUBJECTS.mid);
+      const cur = $('subject').value;
+      $('subject').innerHTML = set.map(x => `<option>${x}</option>`).join('');
+      if (set.includes(cur)) $('subject').value = cur;
+    }
+    updateSubjects();
 
     // ---------- 登入 ----------
     async function login(pc) {
