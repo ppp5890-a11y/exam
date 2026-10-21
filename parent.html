@@ -53,6 +53,7 @@
       <div class="row">
         <div><label>題數</label><select id="count"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></div>
         <div><label>難度</label><select id="level"><option>基礎</option><option selected>中等</option><option>進階</option></select></div>
+        <div><label>題型</label><select id="qtype"><option value="mix">混合（依原比例）</option><option value="mc">只有選擇</option><option value="blank">只有填空</option><option value="short">只有簡答</option></select></div>
       </div>
       <button class="btn" id="genBtn">✨ AI 出題</button>
       <div id="genMsg" class="status"></div>
@@ -82,7 +83,8 @@
     const API = 'https://kxrtesreuuaumdikeqrv.supabase.co/functions/v1/api';
     const KEY = 'sb_publishable_1NB_TggvO0cURnJaIT7D6g_791CoJLD';
     const $ = id => document.getElementById(id);
-    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const clean = s => String(s).replace(/\$([^$]*\\[^$]*)\$/g, '$1').replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2').replace(/\\times/g, '×').replace(/\\div/g, '÷').replace(/\\cdot/g, '·').replace(/\\text\{([^{}]*)\}/g, '$1').replace(/\\[()\[\]]/g, '').replace(/[{}]/g, '');
+    const esc = s => clean(String(s == null ? '' : s)).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const L = 'ABCD';
     let passcode = localStorage.getItem('pc') || '', draft = null;
 
@@ -108,7 +110,7 @@
       const btn = $('genBtn'), msg = $('genMsg');
       btn.disabled = true; msg.className = 'status'; msg.innerText = '出題中，約需 20～60 秒，請不要關閉頁面…';
       try {
-        draft = await call({ action: 'generate', grade: $('grade').value, subject: $('subject').value, scope: $('scope').value.trim(), count: $('count').value, level: $('level').value });
+        draft = await call({ action: 'generate', grade: $('grade').value, subject: $('subject').value, scope: $('scope').value.trim(), count: $('count').value, level: $('level').value, qtype: $('qtype').value });
         msg.innerText = ''; renderDraft();
       } catch (e) { msg.className = 'status err'; msg.innerText = '出題失敗：' + e.message; }
       btn.disabled = false;
@@ -118,7 +120,7 @@
       $('preview').classList.remove('hide'); $('linkBox').classList.add('hide'); $('pubMsg').innerText = '';
       $('title').value = draft.title;
       const flags = draft.questions.filter(q => q.flag).length;
-      $('verifyNote').innerText = !draft.verified ? '（這次沒有完成 AI 二次驗算，請自行確認答案）' : flags ? `⚠ 有 ${flags} 題 AI 兩次解答不一致，已用橘色標出，建議刪除或再確認。` : '✅ AI 已獨立重算一次，填空與選擇題答案一致。簡答題需要家長自行留意。';
+      $('verifyNote').innerText = !draft.questions.some(q => q.type !== 'short') ? '（全部是簡答題，沒有經過 AI 二次驗算，請自行確認參考答案）' : !draft.verified ? '（這次沒有完成 AI 二次驗算，請自行確認答案）' : flags ? `⚠ 有 ${flags} 題 AI 兩次解答不一致，已用橘色標出，建議刪除或再確認。` : '✅ AI 已獨立重算一次，填空與選擇題答案一致。簡答題需要家長自行留意。';
       $('qlist').innerHTML = draft.questions.map((q, i) => {
         let body = '';
         if (q.type === 'blank') body = `<div>${esc(q.template)}</div><div>答案：<b>${esc(q.answer.join('、'))}</b></div>`;
