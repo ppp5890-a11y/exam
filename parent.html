@@ -47,6 +47,7 @@
           <select id="grade" onchange="updateSubjects()"><option>國小一年級</option><option>國小二年級</option><option selected>國小三年級</option><option>國小四年級</option><option>國小五年級</option><option>國小六年級</option><option>國中一年級</option><option>國中二年級</option><option>國中三年級</option></select></div>
         <div><label>科目</label>
           <select id="subject"><option>數學</option><option>國語</option><option>自然</option><option>社會</option><option>英語</option></select></div>
+        <div><label>版本</label><select id="publisher"><option>不指定</option><option>康軒</option><option>南一</option><option>翰林</option></select></div>
       </div>
       <label>範圍／單元（選填）</label>
       <input id="scope" placeholder="例：分數與小數大小比較；留空就由 AI 依年級決定">
@@ -110,6 +111,8 @@
       if (set.includes(cur)) $('subject').value = cur;
     }
     updateSubjects();
+    try { $('publisher').value = localStorage.getItem('pub') || '不指定'; } catch (e) {}
+    $('publisher').onchange = () => { try { localStorage.setItem('pub', $('publisher').value); } catch (e) {} };
 
     // ---------- 登入 ----------
     async function login(pc) {
@@ -126,7 +129,7 @@
       const btn = $('genBtn'), msg = $('genMsg');
       btn.disabled = true; msg.className = 'status'; msg.innerText = '出題中，約需 20～60 秒，請不要關閉頁面…';
       try {
-        draft = await call({ action: 'generate', grade: $('grade').value, subject: $('subject').value, scope: $('scope').value.trim(), count: $('count').value, level: $('level').value, qtype: $('qtype').value });
+        draft = await call({ action: 'generate', grade: $('grade').value, subject: $('subject').value, scope: $('scope').value.trim(), count: $('count').value, level: $('level').value, qtype: $('qtype').value, publisher: $('publisher').value });
         msg.innerText = ''; renderDraft();
       } catch (e) { msg.className = 'status err'; msg.innerText = '出題失敗：' + e.message; }
       btn.disabled = false;
