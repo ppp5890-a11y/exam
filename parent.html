@@ -49,8 +49,7 @@
           <select id="subject"><option>數學</option><option>國語</option><option>自然</option><option>社會</option><option>英語</option></select></div>
         <div><label>版本</label><select id="publisher"><option>不指定</option><option>康軒</option><option>南一</option><option>翰林</option></select></div>
       </div>
-      <label>範圍／單元（選填）</label>
-      <input id="scope" placeholder="例：分數與小數大小比較；留空就由 AI 依年級決定">
+      <div class="row"><div style="flex:1"><label>學期</label><select id="term"><option>不指定</option><option>上學期</option><option>下學期</option></select></div><div style="flex:2"><label>範圍／單元（選填）</label><input id="scope" placeholder="例：分數與小數大小比較；留空就由 AI 依年級決定"></div></div>
       <div class="row">
         <div><label>題數</label><select id="count"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></div>
         <div><label>難度</label><select id="level"><option>基礎</option><option selected>中等</option><option>進階</option></select></div>
@@ -129,7 +128,7 @@
       const btn = $('genBtn'), msg = $('genMsg');
       btn.disabled = true; msg.className = 'status'; msg.innerText = '出題中，約需 20～60 秒，請不要關閉頁面…';
       try {
-        draft = await call({ action: 'generate', grade: $('grade').value, subject: $('subject').value, scope: $('scope').value.trim(), count: $('count').value, level: $('level').value, qtype: $('qtype').value, publisher: $('publisher').value });
+        draft = await call({ action: 'generate', grade: $('grade').value, subject: $('subject').value, scope: $('scope').value.trim(), count: $('count').value, level: $('level').value, qtype: $('qtype').value, publisher: $('publisher').value, term: $('term').value });
         msg.innerText = ''; renderDraft();
       } catch (e) { msg.className = 'status err'; msg.innerText = '出題失敗：' + e.message; }
       btn.disabled = false;
