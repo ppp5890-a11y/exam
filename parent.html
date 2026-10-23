@@ -84,7 +84,7 @@
     const API = 'https://kxrtesreuuaumdikeqrv.supabase.co/functions/v1/api';
     const KEY = 'sb_publishable_1NB_TggvO0cURnJaIT7D6g_791CoJLD';
     const $ = id => document.getElementById(id);
-    const clean = s => String(s).replace(/\$([^$]*\\[^$]*)\$/g, '$1').replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2').replace(/\\times/g, '×').replace(/\\div/g, '÷').replace(/\\cdot/g, '·').replace(/\\text\{([^{}]*)\}/g, '$1').replace(/\\[()\[\]]/g, '').replace(/[{}]/g, '');
+    const clean = s => String(s).replace(/\^\{?(\d+)\}?/g, (m, d) => [...d].map(c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]).join('')).replace(/\$([^$]*\\[^$]*)\$/g, '$1').replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2').replace(/\\times/g, '×').replace(/\\div/g, '÷').replace(/\\cdot/g, '·').replace(/\\text\{([^{}]*)\}/g, '$1').replace(/\\[()\[\]]/g, '').replace(/[{}]/g, '');
     const esc = s => clean(String(s == null ? '' : s)).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const L = 'ABCD';
     const qt = s => esc(s).replace(/\[blank\]/g, '＿＿');

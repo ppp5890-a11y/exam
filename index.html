@@ -35,7 +35,7 @@
   <script>
     const API = 'https://kxrtesreuuaumdikeqrv.supabase.co/functions/v1/api';
     const KEY = 'sb_publishable_1NB_TggvO0cURnJaIT7D6g_791CoJLD';
-    const clean = s => String(s).replace(/\$([^$]*\\[^$]*)\$/g, '$1').replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2').replace(/\\times/g, '×').replace(/\\div/g, '÷').replace(/\\cdot/g, '·').replace(/\\text\{([^{}]*)\}/g, '$1').replace(/\\[()\[\]]/g, '').replace(/[{}]/g, '');
+    const clean = s => String(s).replace(/\^\{?(\d+)\}?/g, (m, d) => [...d].map(c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]).join('')).replace(/\$([^$]*\\[^$]*)\$/g, '$1').replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2').replace(/\\times/g, '×').replace(/\\div/g, '÷').replace(/\\cdot/g, '·').replace(/\\text\{([^{}]*)\}/g, '$1').replace(/\\[()\[\]]/g, '').replace(/[{}]/g, '');
     const esc = s => clean(String(s == null ? '' : s)).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const L = 'ABCD';
     const qt = s => esc(s).replace(/\[blank\]/g, '＿＿');
@@ -69,7 +69,8 @@
 
     function render() {
       document.getElementById('exam-title').innerText = exam.title;
-      let h = '<input id="name" class="name-input" placeholder="請輸入你的名字" maxlength="30">';
+      const needHint = exam.questions.some(q => /[²³⁴]|\^/.test((q.q || '') + (q.template || '') + (q.options || []).join('')));
+      let h = '<input id="name" class="name-input" placeholder="請輸入你的名字" maxlength="30">' + (needHint ? '<div class="muted" style="margin:-8px 0 14px">輸入小提醒：次方可以用 ^ 表示，例如 x² 可輸入 x^2。</div>' : '');
       exam.questions.forEach((q, i) => {
         h += `<div class="q-box"><div><span class="badge">第 ${i + 1} 題</span><b>${qt(q.q)}</b> <span class="muted">(${q.points} 分)</span></div>`;
         if (q.type === 'blank') {
