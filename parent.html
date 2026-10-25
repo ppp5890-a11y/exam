@@ -86,7 +86,13 @@
     </div>
 
     <div class="container">
-      <h1>📊 小孩成績紀錄 <button class="btn-sm" style="float:right" id="refreshBtn">重新整理</button></h1>
+      <h1>📚 已發布的考卷 <button class="btn-sm" style="float:right" id="examsRefresh">重新整理</button></h1>
+      <div class="muted" style="margin-bottom:8px">點考卷可以看題目、答案與解析。</div>
+      <div id="examsBox">載入中...</div>
+    </div>
+
+    <div class="container">
+      <h1>📊 小孩成績紀錄 <button class="btn-sm" style="float:right" id="refreshBtn">重新整理</button> <button class="btn-sm btn-del" style="float:right;margin-right:6px" id="clearBtn">全部清除</button></h1>
       <div id="results">載入中...</div>
     </div>
   </div>
@@ -128,7 +134,7 @@
     // ---------- 登入 ----------
     async function login(pc) {
       passcode = pc;
-      try { await call({ action: 'check' }); localStorage.setItem('pc', pc); $('login').classList.add('hide'); $('app').classList.remove('hide'); loadResults(); loadUnits(); }
+      try { await call({ action: 'check' }); localStorage.setItem('pc', pc); $('login').classList.add('hide'); $('app').classList.remove('hide'); loadResults(); loadExams(); loadUnits(); }
       catch (e) { localStorage.removeItem('pc'); $('login').classList.remove('hide'); $('app').classList.add('hide'); $('loginMsg').innerText = e.message; }
     }
     $('loginBtn').onclick = () => login($('pc').value);
@@ -194,7 +200,7 @@
         draft.title = $('title').value.trim() || draft.title;
         const r = await call({ action: 'publish', draft, grade: $('grade').value, subject: $('subject').value, scope: $('scope').value.trim() });
         $('examLink').innerText = new URL('index.html?exam_id=' + r.id, location.href).href;
-        $('linkBox').classList.remove('hide'); msg.className = 'status okmsg'; msg.innerText = '🎉 已發布！請複製連結傳給小朋友。';
+        $('linkBox').classList.remove('hide'); msg.className = 'status okmsg'; msg.innerText = '🎉 已發布！請複製連結傳給小朋友。'; loadExams();
       } catch (e) { msg.className = 'status err'; msg.innerText = '發布失敗：' + e.message; }
       btn.disabled = false;
     };
@@ -223,22 +229,77 @@
         return { type: 'blank', question: q.question, template: q.template, given: q.given, correct: q.correct, ok: q.ok, got: q.ok ? 1 : 0, max: 1, explain: q.explain };
       });
     }
+    let resultRows = [];
     async function loadResults() {
       const box = $('results'); box.textContent = '載入中...';
       try {
         const { rows, names } = await call({ action: 'results' });
+        resultRows = rows;
         if (!rows.length) { box.innerHTML = '<div class="muted">目前還沒有人繳交考卷。</div>'; return; }
         box.innerHTML = rows.map((r, i) => {
           const cls = r.score >= 80 ? 'good' : r.score >= 60 ? 'mid' : 'low';
           const items = Array.isArray(r.answers) ? r.answers : legacy(r.answers);
           return `<div class="rec"><div class="rec-head" onclick="var d=document.getElementById('d${i}');d.style.display=d.style.display==='block'?'none':'block'">
             <div><b>${esc(r.student_name || '（未填姓名）')}</b><br><span class="muted">${esc(names[r.exam_id] || r.exam_id)} · ${esc(new Date(r.created_at).toLocaleString('zh-TW'))}</span></div>
-            <div class="score ${cls}">${esc(r.score)} 分</div></div>
+            <div style="display:flex;align-items:center;gap:8px"><div class="score ${cls}">${esc(r.score)} 分</div><button class="btn-sm btn-del" onclick="event.stopPropagation();delResult(${i})">刪除</button></div></div>
             <div class="detail" id="d${i}">${items.map(card).join('') || '<div class="muted">沒有作答內容。</div>'}</div></div>`;
         }).join('');
       } catch (e) { box.innerHTML = '<div class="err">讀取失敗：' + esc(e.message) + '</div>'; }
     }
     $('refreshBtn').onclick = loadResults;
+
+    // ---------- 刪除成績 ----------
+    async function delResult(i) {
+      const r = resultRows[i];
+      if (!r) return;
+      if (!confirm('確定要刪除「' + (r.student_name || '（未填姓名）') + '」這筆成績（' + r.score + ' 分）嗎？刪除後無法復原。')) return;
+      try { await call({ action: 'result_delete', id: r.id }); await loadResults(); }
+      catch (e) { alert('刪除失敗：' + e.message); }
+    }
+    $('clearBtn').onclick = async () => {
+      if (!resultRows.length) { alert('目前沒有成績可以清除。'); return; }
+      if (!confirm('確定要清除全部 ' + resultRows.length + ' 筆成績嗎？刪除後無法復原。')) return;
+      if (!confirm('再確認一次：真的要全部清除嗎？（已發布的考卷不會被刪除）')) return;
+      try { await call({ action: 'results_clear' }); await loadResults(); }
+      catch (e) { alert('清除失敗：' + e.message); }
+    };
+
+    // ---------- 已發布的考卷 ----------
+    let examRows = [];
+    function fullQ(q, i) {
+      let body = '';
+      if (q.type === 'blank') body = `<div>${qt(q.template)}</div><div>答案：<b>${esc((q.answer || []).join('、'))}</b></div>`;
+      else if (q.type === 'mc') body = (q.options || []).map((o, j) => `<div>${L[j]}. ${esc(o)} ${j === q.answer ? '✔' : ''}</div>`).join('');
+      else body = `<div>參考答案：<b>${esc(q.answer)}</b></div>`;
+      return `<div class="qd"><div><b>${i + 1}. ${qt(q.q)}</b> <span class="muted">[${{ blank: '填空', mc: '選擇', short: '簡答' }[q.type]}]</span></div>${body}${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}</div>`;
+    }
+    async function loadExams() {
+      const box = $('examsBox'); box.textContent = '載入中...';
+      try {
+        const { exams } = await call({ action: 'exams_list' });
+        examRows = exams;
+        if (!exams.length) { box.innerHTML = '<div class="muted">還沒有發布過考卷。</div>'; return; }
+        box.innerHTML = exams.map((e, i) => `<div class="rec"><div class="rec-head" onclick="openExam(${i})">
+          <div><b>${esc(e.title)}</b><br><span class="muted">${esc(e.grade)} ${esc(e.subject)}${e.count ? ' · ' + e.count + ' 題' : ''}${e.created_at ? ' · ' + esc(new Date(e.created_at).toLocaleString('zh-TW')) : ''}</span></div>
+          <button class="btn-sm" onclick="event.stopPropagation();copyExam(${i}, this)">複製連結</button></div>
+          <div class="detail" id="e${i}"></div></div>`).join('');
+      } catch (e) { box.innerHTML = '<div class="err">讀取失敗：' + esc(e.message) + '</div>'; }
+    }
+    function examLinkOf(i) { return new URL('index.html?exam_id=' + examRows[i].id, location.href).href; }
+    function copyExam(i, btn) { navigator.clipboard.writeText(examLinkOf(i)).then(() => { btn.innerText = '已複製'; }); }
+    async function openExam(i) {
+      const d = $('e' + i);
+      if (d.style.display === 'block') { d.style.display = 'none'; return; }
+      d.style.display = 'block';
+      if (d.dataset.loaded) return;
+      d.innerHTML = '<div class="muted">載入中...</div>';
+      try {
+        const x = await call({ action: 'exam_full', exam_id: examRows[i].id });
+        d.innerHTML = (x.scope ? `<div class="muted" style="margin-bottom:8px">範圍：${esc(x.scope)}</div>` : '') + x.items.map(fullQ).join('');
+        d.dataset.loaded = '1';
+      } catch (e) { d.innerHTML = '<div class="err">讀取失敗：' + esc(e.message) + '</div>'; }
+    }
+    $('examsRefresh').onclick = loadExams;
   </script>
 </body>
 </html>
