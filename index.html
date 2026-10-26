@@ -5,31 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>考卷</title>
   <style>
-    body { font-family: sans-serif; background: #f3f4f6; padding: 16px; }
-    .container { max-width: 640px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; }
-    .header { background: #3b82f6; color: white; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 20px; }
-    .header h1 { font-size: 22px; margin: 0; }
-    .q-box { background: #f9fafb; border: 2px solid #e5e7eb; padding: 14px; border-radius: 8px; margin-bottom: 16px; line-height: 1.9; }
-    .badge { background: #3b82f6; color: white; font-size: 12px; padding: 2px 6px; border-radius: 4px; margin-right: 8px; }
-    .blank-input { width: 64px; height: 30px; text-align: center; border: 2px solid #86efac; border-radius: 4px; font-size: 16px; }
-    .name-input, textarea { width: 100%; box-sizing: border-box; padding: 10px; font-size: 16px; border: 1px solid #d1d5db; border-radius: 6px; }
-    .name-input { margin-bottom: 16px; }
-    label.opt { display: block; padding: 4px 0; cursor: pointer; }
-    .btn-submit { background: #2563eb; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; }
+    body { font-family: "Noto Serif TC", "Songti TC", "PMingLiU", "Microsoft JhengHei", serif; background: #d1d5db; margin: 0; padding: 14px; color: #111; }
+    .toolbar { max-width: 794px; margin: 0 auto 10px; text-align: right; }
+    .btn-print { background: #4b5563; color: white; padding: 8px 14px; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
+    .paper { max-width: 794px; margin: 0 auto; background: white; box-shadow: 0 4px 14px rgba(0,0,0,.28); padding: 34px 44px 40px; box-sizing: border-box; line-height: 2; font-size: 17px; }
+    .p-title { text-align: center; font-size: 26px; font-weight: bold; letter-spacing: 2px; border-bottom: 3px double #111; padding-bottom: 8px; margin-bottom: 12px; }
+    .p-head { display: flex; justify-content: space-between; align-items: stretch; gap: 14px; margin-bottom: 14px; }
+    .p-lines { flex: 1; font-size: 16px; line-height: 2.1; }
+    .p-lines .nm { display: flex; align-items: flex-end; gap: 4px; }
+    .name-line { flex: 1; min-width: 0; border: 0; border-bottom: 1px solid #111; border-radius: 0; font: inherit; font-size: 17px; padding: 0 4px; background: transparent; outline: none; }
+    .name-line:focus { background: #fef9c3; }
+    .line { display: inline-block; border-bottom: 1px solid #111; min-width: 7em; }
+    .p-scorebox { width: 96px; border: 2px solid #111; text-align: center; display: flex; flex-direction: column; flex-shrink: 0; }
+    .p-scorebox .lbl { border-bottom: 1px solid #111; font-size: 15px; line-height: 1.8; }
+    .p-scorebox .val { flex: 1; display: flex; align-items: center; justify-content: center; color: #dc2626; font-weight: bold; font-size: 30px; min-height: 52px; }
+    .p-scorebox .val small { font-size: 14px; margin-left: 2px; }
+    .p-sec { font-weight: bold; font-size: 18px; margin: 18px 0 6px; }
+    .p-sec .sub { font-weight: normal; font-size: 14px; color: #444; margin-left: 6px; }
+    .pq { margin: 0 0 12px; }
+    .pn { font-weight: bold; margin-right: 4px; }
+    .pts { font-size: 13px; color: #555; margin-left: 4px; }
+    .pa { display: inline-block; min-width: 3.4em; text-align: center; margin-right: 2px; }
+    .pa b { font-weight: normal; }
+    .pt { margin-top: 2px; }
+    .blank-input { width: 5em; border: 0; border-bottom: 1px solid #111; border-radius: 0; text-align: center; font: inherit; font-size: 17px; background: transparent; padding: 0 2px; margin: 0 3px; outline: none; }
+    .blank-input:focus { background: #fef9c3; }
+    .po { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; margin: 0 0 0 2.6em; }
+    label.opt { position: relative; display: block; cursor: pointer; padding: 0 6px; border-radius: 4px; }
+    label.opt input { position: absolute; opacity: 0; pointer-events: none; }
+    label.opt:hover { background: #f3f4f6; }
+    label.opt.sel { background: #fde68a; font-weight: bold; }
+    textarea.lined { display: block; width: 100%; box-sizing: border-box; border: 0; outline: none; resize: vertical; font: inherit; font-size: 17px; line-height: 32px; padding: 0 4px; margin-top: 2px; background: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, #6b7280 31px, #6b7280 32px); }
+    .btn-submit { display: block; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 17px; cursor: pointer; width: 100%; margin-top: 22px; font-family: inherit; }
     .btn-submit:disabled { opacity: .5; }
-    .score-board { text-align: center; font-size: 22px; font-weight: bold; color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 8px; margin-bottom: 16px; }
-    .status { text-align: center; margin-top: 12px; }
-    .okq { border-color: #22c55e; } .midq { border-color: #f59e0b; } .badq { border-color: #ef4444; }
-    .ok { background: #dcfce7; padding: 1px 8px; border-radius: 4px; font-weight: bold; }
-    .bad { background: #fee2e2; padding: 1px 8px; border-radius: 4px; font-weight: bold; }
-    .muted { color: #6b7280; font-size: 14px; }
+    .status { text-align: center; margin-top: 12px; font-size: 16px; }
+    .muted { color: #6b7280; font-size: 14px; line-height: 1.6; }
+    /* 批改後：紅筆風格 */
+    .gq { position: relative; padding-left: 30px; }
+    .mk { position: absolute; left: 0; top: -2px; color: #dc2626; font-size: 24px; font-weight: bold; }
+    .gp { color: #dc2626; font-size: 13px; margin-left: 4px; }
+    .fill { display: inline-block; min-width: 3em; text-align: center; border-bottom: 1px solid #111; padding: 0 4px; margin: 0 3px; }
+    .fill.wrong { color: #dc2626; text-decoration: line-through; }
+    .fix { color: #dc2626; font-weight: bold; margin-top: 2px; }
+    .o { display: inline-block; margin-right: 18px; padding: 0 4px; }
+    .o.ch { border: 1.5px solid #111; border-radius: 12px; }
+    .o.cr { color: #dc2626; font-weight: bold; }
+    .given { border-bottom: 1px solid #6b7280; margin-top: 2px; }
+    .gq .muted { margin-top: 2px; }
+    @media (max-width: 560px) {
+      .paper { padding: 22px 16px 28px; font-size: 16px; }
+      .po { grid-template-columns: 1fr; }
+      .p-head { flex-direction: column-reverse; }
+      .p-scorebox { width: 100%; flex-direction: row; }
+      .p-scorebox .lbl { border-bottom: 0; border-right: 1px solid #111; padding: 0 14px; display: flex; align-items: center; }
+    }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .noprint { display: none !important; }
+      .paper { box-shadow: none; padding: 0; max-width: none; font-size: 15px; }
+      @page { size: A4; margin: 14mm; }
+      .pq { page-break-inside: avoid; }
+      .p-sec { page-break-after: avoid; }
+      input::placeholder, textarea::placeholder { color: transparent; }
+      label.opt.sel { background: none; text-decoration: underline; }
+      .po { grid-template-columns: 1fr 1fr; }
+      .p-head { flex-direction: row; }
+      .p-scorebox { width: 96px; flex-direction: column; }
+      .p-scorebox .lbl { border-bottom: 1px solid #111; border-right: 0; padding: 0; display: block; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header"><h1 id="exam-title">載入中...</h1></div>
+  <div class="toolbar noprint"><button class="btn-print" id="printBtn">🖨 列印空白考卷</button></div>
+  <div class="paper">
+    <div class="p-title" id="exam-title">載入中...</div>
+    <div id="head"></div>
     <div id="main"></div>
-    <div id="status" class="status"></div>
+    <div id="status" class="status noprint"></div>
   </div>
 
   <script>
@@ -37,10 +89,17 @@
     const KEY = 'sb_publishable_1NB_TggvO0cURnJaIT7D6g_791CoJLD';
     const clean = s => String(s).replace(/\^\{?(\d+)\}?/g, (m, d) => [...d].map(c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]).join('')).replace(/\$([^$]*\\[^$]*)\$/g, '$1').replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2').replace(/\\times/g, '×').replace(/\\div/g, '÷').replace(/\\cdot/g, '·').replace(/\\text\{([^{}]*)\}/g, '$1').replace(/\\[()\[\]]/g, '').replace(/[{}]/g, '');
     const esc = s => clean(String(s == null ? '' : s)).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    const L = 'ABCD';
     const qt = s => esc(s).replace(/\[blank\]/g, '＿＿');
+    const C4 = '①②③④', CN = ['一', '二', '三', '四'];
+    const SEC = [['blank', '填空題'], ['mc', '選擇題'], ['short', '簡答題']];
+    function groupBy(items, typeOf) {
+      const out = [];
+      SEC.forEach(([t, label]) => { const idx = []; items.forEach((x, i) => { if (typeOf(x) === t) idx.push(i); }); if (idx.length) out.push({ type: t, label, idx }); });
+      out.forEach((g, k) => { g.no = CN[k]; });
+      return out;
+    }
     const examId = new URLSearchParams(location.search).get('exam_id');
-    const main = document.getElementById('main'), statusEl = document.getElementById('status');
+    const main = document.getElementById('main'), headEl = document.getElementById('head'), statusEl = document.getElementById('status');
     let exam = null;
 
     async function call(body) {
@@ -50,46 +109,47 @@
       return d;
     }
 
-    function resultCard(r, i) {
-      const cls = r.ok ? 'okq' : (r.got > 0 ? 'midq' : 'badq'), icon = r.ok ? '✅' : (r.got > 0 ? '🟡' : '❌');
-      let body = '';
-      if (r.type === 'blank') {
-        const parts = String(r.template).split('[blank]');
-        body = '<div>' + parts.map((p, j) => esc(p) + (j < r.correct.length
-          ? `<span class="${String(r.given[j] || '').trim() === String(r.correct[j]).trim() ? 'ok' : 'bad'}">${esc(r.given[j] || '（空白）')}</span>` : '')).join('') + '</div>';
-        if (!r.ok) body += `<div>正確答案：<b>${esc(r.correct.join('、'))}</b></div>`;
-      } else if (r.type === 'mc') {
-        body = r.options.map((o, j) => `<div>${L[j]}. ${esc(o)} ${j === r.given ? '👈 你選的' : ''} ${j === r.correct ? '✔ 正確答案' : ''}</div>`).join('');
-      } else {
-        body = `<div>你的答案：${esc(r.given || '（空白）')}</div><div>參考答案：<b>${esc(r.correct)}</b></div>`;
-      }
-      return `<div class="q-box ${cls}"><div><span class="badge">第 ${i + 1} 題</span><b>${icon} ${qt(r.question)}</b> <span class="muted">(${r.got}/${r.max} 分)</span></div>${body}` +
-        (r.comment ? `<div class="muted">講評：${esc(r.comment)}</div>` : '') + (r.explain ? `<div class="muted">解析：${esc(r.explain)}</div>` : '') + '</div>';
-    }
+    const headHTML = (nameHTML, dateHTML, scoreHTML) =>
+      `<div class="p-head"><div class="p-lines"><div>${esc(exam.grade || '')}　${esc(exam.subject || '')}</div><div class="nm">姓名：${nameHTML}</div><div>日期：${dateHTML}</div></div>` +
+      `<div class="p-scorebox"><div class="lbl">得分</div><div class="val">${scoreHTML}</div></div></div>`;
 
+    // ---------- 作答畫面 ----------
     function render() {
+      document.title = exam.title;
       document.getElementById('exam-title').innerText = exam.title;
+      headEl.innerHTML = headHTML('<input id="name" class="name-line" placeholder="請輸入你的名字" maxlength="30">', '<span class="line"></span>', '');
       const needHint = exam.questions.some(q => /[²³⁴]|\^/.test((q.q || '') + (q.template || '') + (q.options || []).join('')));
-      let h = '<input id="name" class="name-input" placeholder="請輸入你的名字" maxlength="30">' + (needHint ? '<div class="muted" style="margin:-8px 0 14px">輸入小提醒：次方可以用 ^ 表示，例如 x² 可輸入 x^2。</div>' : '');
-      exam.questions.forEach((q, i) => {
-        h += `<div class="q-box"><div><span class="badge">第 ${i + 1} 題</span><b>${qt(q.q)}</b> <span class="muted">(${q.points} 分)</span></div>`;
-        if (q.type === 'blank') {
-          let b = 0;
-          h += '<div>' + esc(q.template).replace(/\[blank\]/g, () => `<input class="blank-input" data-q="${i}" data-b="${b++}" autocomplete="off">`) + '</div>';
-        } else if (q.type === 'mc') {
-          h += q.options.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" value="${j}"> ${L[j]}. ${esc(o)}</label>`).join('');
-        } else {
-          h += `<textarea rows="2" data-q="${i}" placeholder="請寫下答案"></textarea>`;
-        }
-        h += '</div>';
+      let h = needHint ? '<div class="muted noprint" style="margin:0 0 10px">輸入小提醒：次方可以用 ^ 表示，例如 x² 可輸入 x^2。</div>' : '';
+      groupBy(exam.questions, q => q.type).forEach(g => {
+        const sum = g.idx.reduce((s, i) => s + (exam.questions[i].points || 0), 0);
+        h += `<div class="p-sec">${g.no}、${g.label}<span class="sub">（共 ${sum} 分）</span></div>`;
+        g.idx.forEach((i, n) => {
+          const q = exam.questions[i], pts = `<span class="pts">（${q.points} 分）</span>`;
+          if (q.type === 'blank') {
+            let b = 0;
+            h += `<div class="pq"><span class="pn">${n + 1}.</span>${qt(q.q)}${pts}<div class="pt">` + esc(q.template).replace(/\[blank\]/g, () => `<input class="blank-input" data-q="${i}" data-b="${b++}" autocomplete="off">`) + '</div></div>';
+          } else if (q.type === 'mc') {
+            h += `<div class="pq"><span class="pa">（<b id="br${i}">　</b>）</span><span class="pn">${n + 1}.</span>${qt(q.q)}${pts}<div class="po">` +
+              q.options.map((o, j) => `<label class="opt" data-q="${i}"><input type="radio" name="q${i}" value="${j}">${C4[j]} ${esc(o)}</label>`).join('') + '</div></div>';
+          } else {
+            h += `<div class="pq"><span class="pn">${n + 1}.</span>${qt(q.q)}${pts}<textarea class="lined" rows="3" data-q="${i}"></textarea></div>`;
+          }
+        });
       });
-      main.innerHTML = h + '<button id="go" class="btn-submit">繳交考卷</button>';
+      main.innerHTML = h + '<button id="go" class="btn-submit noprint">繳交考卷</button>';
       document.getElementById('go').onclick = submit;
     }
+    main.addEventListener('change', e => {
+      const t = e.target;
+      if (!t.matches || !t.matches('input[type=radio]')) return;
+      const i = t.name.slice(1);
+      document.getElementById('br' + i).textContent = C4[t.value];
+      main.querySelectorAll(`label.opt[data-q="${i}"]`).forEach(l => l.classList.toggle('sel', l.querySelector('input').checked));
+    });
 
     async function submit() {
       const name = document.getElementById('name').value.trim();
-      if (!name) { statusEl.style.color = '#dc2626'; statusEl.innerText = '請先輸入名字'; return; }
+      if (!name) { statusEl.style.color = '#dc2626'; statusEl.innerText = '請先在最上面寫下你的名字'; window.scrollTo(0, 0); return; }
       const answers = exam.questions.map((q, i) => {
         if (q.type === 'blank') return [...document.querySelectorAll(`input[data-q="${i}"]`)].map(x => x.value.trim());
         if (q.type === 'mc') { const r = document.querySelector(`input[name="q${i}"]:checked`); return r ? Number(r.value) : null; }
@@ -101,13 +161,46 @@
       statusEl.style.color = '#374151'; statusEl.innerText = '批改中，請稍候…';
       try {
         const res = await call({ action: 'submit', exam_id: examId, name, answers });
-        main.innerHTML = `<div class="score-board">${esc(name)} 的得分：${res.score} / ${res.total} 分</div>` + res.results.map(resultCard).join('');
+        showResult(name, res);
         statusEl.style.color = '#16a34a'; statusEl.innerText = '🎉 成績已回傳給家長囉！';
+        document.getElementById('printBtn').innerText = '🖨 列印批改結果';
         window.scrollTo(0, 0);
       } catch (e) {
         btn.disabled = false; statusEl.style.color = '#dc2626'; statusEl.innerText = '繳交失敗：' + e.message;
       }
     }
+
+    // ---------- 批改結果（紅筆風格）----------
+    function gradedQ(r, n) {
+      const mk = r.ok ? '✓' : (r.got > 0 ? '△' : '✗');
+      const pts = `<span class="gp">${r.got}/${r.max}</span>`;
+      let pre = '', body = '';
+      if (r.type === 'blank') {
+        const given = Array.isArray(r.given) ? r.given : [];
+        body = '<div class="pt">' + String(r.template).split('[blank]').map((p, j) => esc(p) + (j < r.correct.length
+          ? `<span class="fill ${String(given[j] || '').trim() === String(r.correct[j]).trim() ? '' : 'wrong'}">${esc(given[j] || '　')}</span>` : '')).join('') + '</div>';
+        if (!r.ok) body += `<div class="fix">正確答案：${esc(r.correct.join('、'))}</div>`;
+      } else if (r.type === 'mc') {
+        pre = `<span class="pa">（${r.given != null && r.given !== '' ? C4[r.given] : '　'}）</span>`;
+        body = '<div>' + r.options.map((o, j) => `<span class="o ${j === r.given ? 'ch' : ''} ${j === r.correct ? 'cr' : ''}">${C4[j]} ${esc(o)}${j === r.correct ? ' ✔' : ''}</span>`).join('') + '</div>';
+        if (!r.ok) body += `<div class="fix">正確答案：${C4[r.correct]}</div>`;
+      } else {
+        body = `<div class="given">${esc(r.given || '（空白）')}</div><div class="fix">參考答案：${esc(r.correct)}</div>`;
+      }
+      return `<div class="pq gq"><span class="mk">${mk}</span>${pre}<span class="pn">${n}.</span>${qt(r.question)}${pts}${body}` +
+        (r.comment ? `<div class="muted">講評：${esc(r.comment)}</div>` : '') + (r.explain ? `<div class="muted">解析：${esc(r.explain)}</div>` : '') + '</div>';
+    }
+    function showResult(name, res) {
+      headEl.innerHTML = headHTML(`<span class="line" style="flex:1">${esc(name)}</span>`, `<span class="line">${esc(new Date().toLocaleDateString('zh-TW'))}</span>`, `<span>${esc(res.score)}<small>/${esc(res.total)}</small></span>`);
+      let h = '';
+      groupBy(res.results, r => r.type).forEach(g => {
+        const got = g.idx.reduce((s, i) => s + res.results[i].got, 0), max = g.idx.reduce((s, i) => s + res.results[i].max, 0);
+        h += `<div class="p-sec">${g.no}、${g.label}<span class="sub">（得 ${got} / ${max} 分）</span></div>` + g.idx.map((i, n) => gradedQ(res.results[i], n + 1)).join('');
+      });
+      main.innerHTML = h;
+    }
+
+    document.getElementById('printBtn').onclick = () => window.print();
 
     (async () => {
       if (!examId) { document.getElementById('exam-title').innerText = '找不到這份考卷'; return; }

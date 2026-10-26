@@ -27,7 +27,44 @@
     .score { font-size: 20px; font-weight: bold; } .good { color: #16a34a; } .mid { color: #d97706; } .low { color: #dc2626; }
     .detail { display: none; padding: 12px; }
     .hide { display: none; }
+    .sec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; cursor: pointer; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 14px; }
+    .sec-head h1 { border: 0; margin: 0; padding: 0; }
+    .sec-head.closed { border-bottom: 0; padding-bottom: 0; margin-bottom: 0; }
+    .sec-btns { display: flex; gap: 6px; flex-shrink: 0; }
     label.chk { display: block; font-weight: normal; margin: 4px 0; }
+
+    .sec-t { font-weight: bold; color: #1e3a8a; margin: 14px 0 6px; font-size: 16px; }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+    .modal.hide { display: none; }
+    .modal-box { background: white; border-radius: 12px; padding: 20px; width: 100%; max-width: 360px; }
+    .modal-box .btn { margin-top: 10px; }
+    #printArea { display: none; }
+    .paper { color: #111; font-family: "Noto Serif TC", "Songti TC", "PMingLiU", "Microsoft JhengHei", serif; font-size: 15px; line-height: 2; }
+    .paper .p-title { text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 2px; border-bottom: 3px double #111; padding-bottom: 6px; margin-bottom: 10px; }
+    .paper .p-head { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+    .paper .p-lines { flex: 1; line-height: 2.1; }
+    .paper .line { display: inline-block; border-bottom: 1px solid #111; min-width: 7em; }
+    .paper .p-scorebox { width: 96px; border: 2px solid #111; text-align: center; min-height: 70px; }
+    .paper .p-scorebox div { border-bottom: 1px solid #111; line-height: 1.8; }
+    .paper .p-sec { font-weight: bold; font-size: 17px; margin: 16px 0 6px; page-break-after: avoid; }
+    .paper .p-sec .sub { font-weight: normal; font-size: 13px; color: #444; margin-left: 6px; }
+    .paper .pq { margin: 0 0 10px; page-break-inside: avoid; }
+    .paper .pn { font-weight: bold; margin-right: 4px; }
+    .paper .pts { font-size: 12px; color: #555; margin-left: 4px; }
+    .paper .pa { display: inline-block; min-width: 3.4em; text-align: center; margin-right: 2px; }
+    .paper .pb { display: inline-block; border-bottom: 1px solid #111; min-width: 4.5em; margin: 0 3px; }
+    .paper .po { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; margin-left: 2.6em; }
+    .paper .pl { border-bottom: 1px solid #6b7280; height: 30px; }
+    .paper .ans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 14px; }
+    .paper .ans-grid .wide { grid-column: 1 / -1; }
+    @media print {
+      @page { size: A4; margin: 14mm; }
+      body { background: #fff; padding: 0; }
+      body.printing #app, body.printing #login, body.printing #printModal { display: none !important; }
+      body.printing #printArea { display: block; }
+      .paper { page-break-after: always; }
+      .paper:last-child { page-break-after: auto; }
+    }
   </style>
 </head>
 <body>
@@ -86,16 +123,38 @@
     </div>
 
     <div class="container">
-      <h1>📚 已發布的考卷 <button class="btn-sm" style="float:right" id="examsRefresh">重新整理</button></h1>
-      <div class="muted" style="margin-bottom:8px">點考卷可以看題目、答案與解析。</div>
-      <div id="examsBox">載入中...</div>
+      <div class="sec-head closed" id="examsHead" onclick="toggleSec(event, 'examsHead', 'examsWrap', 'examsArrow')">
+        <h1><span id="examsArrow">▶</span> 📚 已發布的考卷 <span class="muted" id="examsCount"></span></h1>
+        <div class="sec-btns"><button class="btn-sm" id="examsRefresh">重新整理</button><button class="btn-sm btn-del" id="examsClear">全部刪除</button></div>
+      </div>
+      <div id="examsWrap" class="hide">
+        <div class="muted" style="margin-bottom:8px">點考卷可以看題目、答案與解析。</div>
+        <div id="examsBox">載入中...</div>
+      </div>
     </div>
 
     <div class="container">
-      <h1>📊 小孩成績紀錄 <button class="btn-sm" style="float:right" id="refreshBtn">重新整理</button> <button class="btn-sm btn-del" style="float:right;margin-right:6px" id="clearBtn">全部清除</button></h1>
-      <div id="results">載入中...</div>
+      <div class="sec-head closed" id="resHead" onclick="toggleSec(event, 'resHead', 'resWrap', 'resArrow')">
+        <h1><span id="resArrow">▶</span> 📊 小孩成績紀錄 <span class="muted" id="resCount"></span></h1>
+        <div class="sec-btns"><button class="btn-sm" id="refreshBtn">重新整理</button><button class="btn-sm btn-del" id="clearBtn">全部清除</button></div>
+      </div>
+      <div id="resWrap" class="hide">
+        <div id="results">載入中...</div>
+      </div>
     </div>
   </div>
+
+  <div id="printModal" class="modal hide">
+    <div class="modal-box">
+      <b id="pmTitle"></b>
+      <div class="muted" style="margin-top:6px">請選擇要列印的內容。考卷只印題目，不含答案；答案卷只列各大題答案，會另起一頁。</div>
+      <button class="btn" id="pm1">只印考卷</button>
+      <button class="btn" id="pm3" style="background:#3b82f6">只印答案卷</button>
+      <button class="btn" id="pm2" style="background:#8b5cf6">考卷＋答案卷（答案卷另起一頁）</button>
+      <button class="btn" id="pm0" style="background:#6b7280">取消</button>
+    </div>
+  </div>
+  <div id="printArea"></div>
 
   <script>
     const API = 'https://kxrtesreuuaumdikeqrv.supabase.co/functions/v1/api';
@@ -104,6 +163,14 @@
     const clean = s => String(s).replace(/\^\{?(\d+)\}?/g, (m, d) => [...d].map(c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]).join('')).replace(/\$([^$]*\\[^$]*)\$/g, '$1').replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2').replace(/\\times/g, '×').replace(/\\div/g, '÷').replace(/\\cdot/g, '·').replace(/\\text\{([^{}]*)\}/g, '$1').replace(/\\[()\[\]]/g, '').replace(/[{}]/g, '');
     const esc = s => clean(String(s == null ? '' : s)).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const L = 'ABCD';
+    const C4 = '①②③④', CN = ['一', '二', '三', '四'];
+    const SEC = [['blank', '填空題'], ['mc', '選擇題'], ['short', '簡答題']];
+    function groupBy(items, typeOf) {
+      const out = [];
+      SEC.forEach(([t, label]) => { const idx = []; items.forEach((x, i) => { if (typeOf(x) === t) idx.push(i); }); if (idx.length) out.push({ type: t, label, idx }); });
+      out.forEach((g, k) => { g.no = CN[k]; });
+      return out;
+    }
     const qt = s => esc(s).replace(/\[blank\]/g, '＿＿');
     let passcode = localStorage.getItem('pc') || '', draft = null;
 
@@ -183,13 +250,15 @@
       $('title').value = draft.title;
       const flags = draft.questions.filter(q => q.flag).length;
       $('verifyNote').innerText = !draft.questions.some(q => q.type !== 'short') ? '（全部是簡答題，沒有經過 AI 二次驗算，請自行確認參考答案）' : !draft.verified ? '（這次沒有完成 AI 二次驗算，請自行確認答案）' : flags ? `⚠ 有 ${flags} 題 AI 兩次解答不一致，已用橘色標出，建議刪除或再確認。` : '✅ AI 已獨立重算一次，填空與選擇題答案一致。簡答題需要家長自行留意。';
-      $('qlist').innerHTML = draft.questions.map((q, i) => {
-        let body = '';
-        if (q.type === 'blank') body = `<div>${esc(q.template)}</div><div>答案：<b>${esc(q.answer.join('、'))}</b></div>`;
-        else if (q.type === 'mc') body = q.options.map((o, j) => `<div>${L[j]}. ${esc(o)} ${j === q.answer ? '✔' : ''}</div>`).join('');
-        else body = `<div>參考答案：<b>${esc(q.answer)}</b></div>`;
-        return `<div class="qd ${q.flag ? 'flagq' : ''}"><div><b>${i + 1}. ${qt(q.q)}</b> <span class="muted">[${{ blank: '填空', mc: '選擇', short: '簡答' }[q.type]}]</span> ${q.flag ? '<b style="color:#d97706">⚠ 答案存疑</b>' : ''}</div>${body}${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}<button class="btn-sm btn-del" onclick="delQ(${i})">刪除這題</button></div>`;
-      }).join('');
+      $('qlist').innerHTML = groupBy(draft.questions, q => q.type).map(g =>
+        `<div class="sec-t">${g.no}、${g.label} <span class="muted">（共 ${g.idx.length} 題）</span></div>` + g.idx.map((i, n) => draftQ(draft.questions[i], i, n)).join('')).join('');
+    }
+    function draftQ(q, i, n) {
+      let body = '';
+      if (q.type === 'blank') body = `<div>${qt(q.template)}</div><div>答案：<b>${esc(q.answer.join('、'))}</b></div>`;
+      else if (q.type === 'mc') body = q.options.map((o, j) => `<div>${C4[j]} ${esc(o)} ${j === q.answer ? '✔' : ''}</div>`).join('');
+      else body = `<div>參考答案：<b>${esc(q.answer)}</b></div>`;
+      return `<div class="qd ${q.flag ? 'flagq' : ''}"><div><b>${n + 1}. ${qt(q.q)}</b> ${q.flag ? '<b style="color:#d97706">⚠ 答案存疑</b>' : ''}</div>${body}${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}<button class="btn-sm btn-del" onclick="delQ(${i})">刪除這題</button></div>`;
     }
     function delQ(i) { draft.questions.splice(i, 1); renderDraft(); }
 
@@ -215,9 +284,9 @@
           ? `<span class="${String(r.given[j] || '').trim() === String(r.correct[j]).trim() ? 'ok' : 'bad'}">${esc(r.given[j] || '（空白）')}</span>` : '')).join('') + '</div>';
         if (!r.ok) body += `<div>正確答案：<b>${esc(r.correct.join('、'))}</b></div>`;
       } else if (r.type === 'mc') {
-        body = r.options.map((o, j) => `<div>${L[j]}. ${esc(o)} ${j === r.given ? '👈 作答' : ''} ${j === r.correct ? '✔ 正確' : ''}</div>`).join('');
+        body = r.options.map((o, j) => `<div>${C4[j]} ${esc(o)} ${j === r.given ? '👈 作答' : ''} ${j === r.correct ? '✔ 正確' : ''}</div>`).join('');
       } else body = `<div>作答：${esc(r.given || '（空白）')}</div><div>參考答案：<b>${esc(r.correct)}</b></div>`;
-      return `<div class="qd ${cls}"><div><b>第 ${i + 1} 題 ${icon}</b> ${qt(r.question)} <span class="muted">(${r.got}/${r.max})</span></div>${body}` +
+      return `<div class="qd ${cls}"><div><b>${i + 1}. ${icon}</b> ${qt(r.question)} <span class="muted">(${r.got}/${r.max})</span></div>${body}` +
         (r.comment ? `<div class="muted">講評：${esc(r.comment)}</div>` : '') + (r.explain ? `<div class="muted">解析：${esc(r.explain)}</div>` : '') + '</div>';
     }
     // 相容舊格式資料
@@ -229,12 +298,16 @@
         return { type: 'blank', question: q.question, template: q.template, given: q.given, correct: q.correct, ok: q.ok, got: q.ok ? 1 : 0, max: 1, explain: q.explain };
       });
     }
+    function cardsHTML(items) {
+      return groupBy(items, r => r.type).map(g => `<div class="sec-t">${g.no}、${g.label}</div>` + g.idx.map((i, n) => card(items[i], n)).join('')).join('');
+    }
     let resultRows = [];
     async function loadResults() {
       const box = $('results'); box.textContent = '載入中...';
       try {
         const { rows, names } = await call({ action: 'results' });
         resultRows = rows;
+        $('resCount').innerText = '（' + rows.length + ' 筆）';
         if (!rows.length) { box.innerHTML = '<div class="muted">目前還沒有人繳交考卷。</div>'; return; }
         box.innerHTML = rows.map((r, i) => {
           const cls = r.score >= 80 ? 'good' : r.score >= 60 ? 'mid' : 'low';
@@ -242,7 +315,7 @@
           return `<div class="rec"><div class="rec-head" onclick="var d=document.getElementById('d${i}');d.style.display=d.style.display==='block'?'none':'block'">
             <div><b>${esc(r.student_name || '（未填姓名）')}</b><br><span class="muted">${esc(names[r.exam_id] || r.exam_id)} · ${esc(new Date(r.created_at).toLocaleString('zh-TW'))}</span></div>
             <div style="display:flex;align-items:center;gap:8px"><div class="score ${cls}">${esc(r.score)} 分</div><button class="btn-sm btn-del" onclick="event.stopPropagation();delResult(${i})">刪除</button></div></div>
-            <div class="detail" id="d${i}">${items.map(card).join('') || '<div class="muted">沒有作答內容。</div>'}</div></div>`;
+            <div class="detail" id="d${i}">${cardsHTML(items) || '<div class="muted">沒有作答內容。</div>'}</div></div>`;
         }).join('');
       } catch (e) { box.innerHTML = '<div class="err">讀取失敗：' + esc(e.message) + '</div>'; }
     }
@@ -266,22 +339,64 @@
 
     // ---------- 已發布的考卷 ----------
     let examRows = [];
-    function fullQ(q, i) {
+    function fullQ(q, n) {
       let body = '';
       if (q.type === 'blank') body = `<div>${qt(q.template)}</div><div>答案：<b>${esc((q.answer || []).join('、'))}</b></div>`;
-      else if (q.type === 'mc') body = (q.options || []).map((o, j) => `<div>${L[j]}. ${esc(o)} ${j === q.answer ? '✔' : ''}</div>`).join('');
+      else if (q.type === 'mc') body = (q.options || []).map((o, j) => `<div>${C4[j]} ${esc(o)} ${j === q.answer ? '✔' : ''}</div>`).join('');
       else body = `<div>參考答案：<b>${esc(q.answer)}</b></div>`;
-      return `<div class="qd"><div><b>${i + 1}. ${qt(q.q)}</b> <span class="muted">[${{ blank: '填空', mc: '選擇', short: '簡答' }[q.type]}]</span></div>${body}${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}</div>`;
+      return `<div class="qd"><div><b>${n + 1}. ${qt(q.q)}</b> <span class="muted">(${q.points} 分)</span></div>${body}${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}</div>`;
     }
+    const secSum = (x, g) => g.idx.reduce((s, i) => s + (x.items[i].points || 0), 0);
+    function fullHTML(x) {
+      return (x.scope ? `<div class="muted" style="margin-bottom:8px">範圍：${esc(x.scope)}</div>` : '') +
+        groupBy(x.items, q => q.type).map(g => `<div class="sec-t">${g.no}、${g.label} <span class="muted">（共 ${secSum(x, g)} 分）</span></div>` + g.idx.map((i, n) => fullQ(x.items[i], n)).join('')).join('');
+    }
+    const fullCache = {};
+    async function getFull(id) { if (!fullCache[id]) fullCache[id] = await call({ action: 'exam_full', exam_id: id }); return fullCache[id]; }
+
+    // ---------- 列印：考卷（只印題目）與答案卷（只印各大題答案）----------
+    function pq(q, n) {
+      const pts = q.points ? `<span class="pts">（${q.points} 分）</span>` : '';
+      if (q.type === 'blank') return `<div class="pq"><span class="pn">${n}.</span>${qt(q.q)}${pts}<div>${esc(q.template).replace(/\[blank\]/g, '<span class="pb"></span>')}</div></div>`;
+      if (q.type === 'mc') return `<div class="pq"><span class="pa">（　　）</span><span class="pn">${n}.</span>${qt(q.q)}${pts}<div class="po">${(q.options || []).map((o, j) => `<span>${C4[j]} ${esc(o)}</span>`).join('')}</div></div>`;
+      return `<div class="pq"><span class="pn">${n}.</span>${qt(q.q)}${pts}<div class="pl"></div><div class="pl"></div><div class="pl"></div></div>`;
+    }
+    function examPaper(x) {
+      return `<section class="paper"><div class="p-title">${esc(x.title)}</div>` +
+        `<div class="p-head"><div class="p-lines"><div>${esc(x.grade)}　${esc(x.subject)}</div><div>姓名：<span class="line"></span></div><div>日期：<span class="line"></span></div></div><div class="p-scorebox"><div>得分</div></div></div>` +
+        groupBy(x.items, q => q.type).map(g => `<div class="p-sec">${g.no}、${g.label}<span class="sub">（共 ${secSum(x, g)} 分）</span></div>` + g.idx.map((i, n) => pq(x.items[i], n + 1)).join('')).join('') + '</section>';
+    }
+    function ansText(q) { return q.type === 'blank' ? esc((q.answer || []).join('、')) : q.type === 'mc' ? (C4[q.answer] || '') : esc(q.answer); }
+    function answerSheet(x) {
+      return `<section class="paper"><div class="p-title">${esc(x.title)}　答案卷</div><div class="p-lines" style="margin-bottom:8px">${esc(x.grade)}　${esc(x.subject)}</div>` +
+        groupBy(x.items, q => q.type).map(g => `<div class="p-sec">${g.no}、${g.label}</div><div class="ans-grid">` +
+          g.idx.map((i, n) => `<div class="${x.items[i].type === 'short' ? 'wide' : ''}"><b>${n + 1}.</b> ${ansText(x.items[i])}</div>`).join('') + '</div>').join('') + '</section>';
+    }
+    let pmIdx = null;
+    function askPrint(i) { pmIdx = i; $('pmTitle').innerText = examRows[i].title; $('printModal').classList.remove('hide'); }
+    async function doPrint(mode) {
+      $('printModal').classList.add('hide');
+      const e = examRows[pmIdx]; if (!e) return;
+      try {
+        const x = await getFull(e.id);
+        $('printArea').innerHTML = (mode !== 'ans' ? examPaper(x) : '') + (mode !== 'paper' ? answerSheet(x) : '');
+        document.body.classList.add('printing');
+        setTimeout(() => window.print(), 150);
+      } catch (err) { alert('讀取考卷失敗：' + err.message); }
+    }
+    window.addEventListener('afterprint', () => { document.body.classList.remove('printing'); $('printArea').innerHTML = ''; });
+    $('pm1').onclick = () => doPrint('paper'); $('pm2').onclick = () => doPrint('both'); $('pm3').onclick = () => doPrint('ans');
+    $('pm0').onclick = () => $('printModal').classList.add('hide');
     async function loadExams() {
       const box = $('examsBox'); box.textContent = '載入中...';
       try {
         const { exams } = await call({ action: 'exams_list' });
         examRows = exams;
+        $('examsCount').innerText = '（' + exams.length + ' 份）';
         if (!exams.length) { box.innerHTML = '<div class="muted">還沒有發布過考卷。</div>'; return; }
         box.innerHTML = exams.map((e, i) => `<div class="rec"><div class="rec-head" onclick="openExam(${i})">
           <div><b>${esc(e.title)}</b><br><span class="muted">${esc(e.grade)} ${esc(e.subject)}${e.count ? ' · ' + e.count + ' 題' : ''}${e.created_at ? ' · ' + esc(new Date(e.created_at).toLocaleString('zh-TW')) : ''}</span></div>
-          <button class="btn-sm" onclick="event.stopPropagation();copyExam(${i}, this)">複製連結</button></div>
+          <div style="display:flex;gap:6px;flex-shrink:0"><button class="btn-sm" onclick="event.stopPropagation();copyExam(${i}, this)">複製連結</button><button class="btn-sm" style="background:#8b5cf6" onclick="event.stopPropagation();askPrint(${i})">列印</button><button class="btn-sm btn-del" onclick="event.stopPropagation();delExam(${i})">刪除</button></div></div>
           <div class="detail" id="e${i}"></div></div>`).join('');
       } catch (e) { box.innerHTML = '<div class="err">讀取失敗：' + esc(e.message) + '</div>'; }
     }
@@ -294,12 +409,34 @@
       if (d.dataset.loaded) return;
       d.innerHTML = '<div class="muted">載入中...</div>';
       try {
-        const x = await call({ action: 'exam_full', exam_id: examRows[i].id });
-        d.innerHTML = (x.scope ? `<div class="muted" style="margin-bottom:8px">範圍：${esc(x.scope)}</div>` : '') + x.items.map(fullQ).join('');
+        const x = await getFull(examRows[i].id);
+        d.innerHTML = fullHTML(x);
         d.dataset.loaded = '1';
       } catch (e) { d.innerHTML = '<div class="err">讀取失敗：' + esc(e.message) + '</div>'; }
     }
     $('examsRefresh').onclick = loadExams;
+
+    function toggleSec(ev, headId, wrapId, arrowId) {
+      if (ev.target.closest('button')) return;
+      const w = $(wrapId), open = w.classList.contains('hide');
+      w.classList.toggle('hide', !open);
+      $(headId).classList.toggle('closed', !open);
+      $(arrowId).innerText = open ? '▼' : '▶';
+    }
+    async function delExam(i) {
+      const e = examRows[i];
+      if (!e) return;
+      if (!confirm('確定要刪除考卷「' + e.title + '」嗎？\n這份考卷的題目、答案和所有小孩的成績都會一起刪除，小孩手上的連結也會失效，無法復原。')) return;
+      try { await call({ action: 'exam_delete', exam_id: e.id }); await loadExams(); await loadResults(); }
+      catch (err) { alert('刪除失敗：' + err.message); }
+    }
+    $('examsClear').onclick = async () => {
+      if (!examRows.length) { alert('目前沒有考卷可以刪除。'); return; }
+      if (!confirm('確定要刪除全部 ' + examRows.length + ' 份考卷嗎？\n所有題目、答案和成績都會一起刪除，小孩手上的連結也會失效，無法復原。')) return;
+      if (!confirm('再確認一次：真的要全部刪除嗎？')) return;
+      try { await call({ action: 'exams_clear' }); await loadExams(); await loadResults(); }
+      catch (err) { alert('刪除失敗：' + err.message); }
+    };
   </script>
 </body>
 </html>
