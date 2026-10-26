@@ -57,6 +57,13 @@
     .paper .pl { border-bottom: 1px solid #6b7280; height: 30px; }
     .paper .ans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 14px; }
     .paper .ans-grid .wide { grid-column: 1 / -1; }
+    .paper.view { background: #fff; border: 1px solid #d1d5db; border-radius: 4px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,.12); margin-top: 6px; }
+    .paper .ak { color: #dc2626; font-weight: bold; }
+    .paper .pb .ak { display: inline-block; min-width: 3em; text-align: center; }
+    .paper .pe { color: #6b7280; font-size: 13px; line-height: 1.7; }
+    .paper .pans { border-bottom: 1px solid #6b7280; min-height: 30px; line-height: 30px; }
+    .paper .pq.flagq { background: #fffbeb; border-left: 4px solid #f59e0b; padding-left: 8px; }
+    .paper .pinfo { text-align: center; color: #444; font-size: 14px; margin-bottom: 6px; }
     @media print {
       @page { size: A4; margin: 14mm; }
       body { background: #fff; padding: 0; }
@@ -250,15 +257,8 @@
       $('title').value = draft.title;
       const flags = draft.questions.filter(q => q.flag).length;
       $('verifyNote').innerText = !draft.questions.some(q => q.type !== 'short') ? '（全部是簡答題，沒有經過 AI 二次驗算，請自行確認參考答案）' : !draft.verified ? '（這次沒有完成 AI 二次驗算，請自行確認答案）' : flags ? `⚠ 有 ${flags} 題 AI 兩次解答不一致，已用橘色標出，建議刪除或再確認。` : '✅ AI 已獨立重算一次，填空與選擇題答案一致。簡答題需要家長自行留意。';
-      $('qlist').innerHTML = groupBy(draft.questions, q => q.type).map(g =>
-        `<div class="sec-t">${g.no}、${g.label} <span class="muted">（共 ${g.idx.length} 題）</span></div>` + g.idx.map((i, n) => draftQ(draft.questions[i], i, n)).join('')).join('');
-    }
-    function draftQ(q, i, n) {
-      let body = '';
-      if (q.type === 'blank') body = `<div>${qt(q.template)}</div><div>答案：<b>${esc(q.answer.join('、'))}</b></div>`;
-      else if (q.type === 'mc') body = q.options.map((o, j) => `<div>${C4[j]} ${esc(o)} ${j === q.answer ? '✔' : ''}</div>`).join('');
-      else body = `<div>參考答案：<b>${esc(q.answer)}</b></div>`;
-      return `<div class="qd ${q.flag ? 'flagq' : ''}"><div><b>${n + 1}. ${qt(q.q)}</b> ${q.flag ? '<b style="color:#d97706">⚠ 答案存疑</b>' : ''}</div>${body}${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}<button class="btn-sm btn-del" onclick="delQ(${i})">刪除這題</button></div>`;
+      $('qlist').innerHTML = keyPaper({ title: draft.title, grade: $('grade').value, subject: $('subject').value, items: draft.questions },
+        i => `<div><button class="btn-sm btn-del" onclick="delQ(${i})">刪除這題</button>${draft.questions[i].flag ? ' <b style="color:#d97706">⚠ 答案存疑</b>' : ''}</div>`);
     }
     function delQ(i) { draft.questions.splice(i, 1); renderDraft(); }
 
@@ -339,18 +339,27 @@
 
     // ---------- 已發布的考卷 ----------
     let examRows = [];
-    function fullQ(q, n) {
-      let body = '';
-      if (q.type === 'blank') body = `<div>${qt(q.template)}</div><div>答案：<b>${esc((q.answer || []).join('、'))}</b></div>`;
-      else if (q.type === 'mc') body = (q.options || []).map((o, j) => `<div>${C4[j]} ${esc(o)} ${j === q.answer ? '✔' : ''}</div>`).join('');
-      else body = `<div>參考答案：<b>${esc(q.answer)}</b></div>`;
-      return `<div class="qd"><div><b>${n + 1}. ${qt(q.q)}</b> <span class="muted">(${q.points} 分)</span></div>${body}${q.explain ? `<div class="muted">解析：${esc(q.explain)}</div>` : ''}</div>`;
-    }
     const secSum = (x, g) => g.idx.reduce((s, i) => s + (x.items[i].points || 0), 0);
-    function fullHTML(x) {
-      return (x.scope ? `<div class="muted" style="margin-bottom:8px">範圍：${esc(x.scope)}</div>` : '') +
-        groupBy(x.items, q => q.type).map(g => `<div class="sec-t">${g.no}、${g.label} <span class="muted">（共 ${secSum(x, g)} 分）</span></div>` + g.idx.map((i, n) => fullQ(x.items[i], n)).join('')).join('');
+    // 紙本版面＋答案（紅字）。預覽與已發布考卷共用
+    function keyQ(q, n, extra) {
+      const pts = q.points ? `<span class="pts">（${q.points} 分）</span>` : '';
+      let pre = '', body = '';
+      if (q.type === 'blank') {
+        let b = 0; const ans = q.answer || [];
+        body = `<div>${esc(q.template).replace(/\[blank\]/g, () => `<span class="pb"><span class="ak">${esc(ans[b++] || '')}</span></span>`)}</div>`;
+      } else if (q.type === 'mc') {
+        pre = `<span class="pa">（<span class="ak">${C4[q.answer] || '　'}</span>）</span>`;
+        body = `<div class="po">${(q.options || []).map((o, j) => `<span class="${j === q.answer ? 'ak' : ''}">${C4[j]} ${esc(o)}</span>`).join('')}</div>`;
+      } else body = `<div class="pans ak">${esc(q.answer)}</div>`;
+      return `<div class="pq ${q.flag ? 'flagq' : ''}">${pre}<span class="pn">${n}.</span>${qt(q.q)}${pts}${body}${q.explain ? `<div class="pe">解析：${esc(q.explain)}</div>` : ''}${extra || ''}</div>`;
     }
+    function keyPaper(x, extraFn) {
+      const hasPts = x.items.some(q => q.points);
+      return `<div class="paper view"><div class="p-title">${esc(x.title)}</div><div class="pinfo">${esc(x.grade || '')}　${esc(x.subject || '')}${x.scope ? '　範圍：' + esc(x.scope) : ''}</div>` +
+        groupBy(x.items, q => q.type).map(g => `<div class="p-sec">${g.no}、${g.label}<span class="sub">（${hasPts ? '共 ' + secSum(x, g) + ' 分' : '共 ' + g.idx.length + ' 題'}）</span></div>` +
+          g.idx.map((i, n) => keyQ(x.items[i], n + 1, extraFn ? extraFn(i) : '')).join('')).join('') + '</div>';
+    }
+    const fullHTML = x => keyPaper(x);
     const fullCache = {};
     async function getFull(id) { if (!fullCache[id]) fullCache[id] = await call({ action: 'exam_full', exam_id: id }); return fullCache[id]; }
 
