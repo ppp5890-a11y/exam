@@ -64,6 +64,21 @@
     .paper .pans { border-bottom: 1px solid #6b7280; min-height: 30px; line-height: 30px; }
     .paper .pq.flagq { background: #fffbeb; border-left: 4px solid #f59e0b; padding-left: 8px; }
     .paper .pinfo { text-align: center; color: #444; font-size: 14px; margin-bottom: 6px; }
+    .paper .p-scorebox .lbl { border-bottom: 1px solid #111; line-height: 1.8; }
+    .paper .p-scorebox .val { border-bottom: 0; color: #dc2626; font-weight: bold; font-size: 28px; line-height: 1.6; min-height: 48px; display: flex; align-items: center; justify-content: center; }
+    .paper .p-scorebox .val small { font-size: 13px; margin-left: 2px; }
+    .paper .p-lines .line { min-width: 8em; }
+    .paper .pt { margin-top: 2px; }
+    .paper .gq { position: relative; padding-left: 30px; }
+    .paper .mk { position: absolute; left: 0; top: -2px; color: #dc2626; font-size: 24px; font-weight: bold; }
+    .paper .gp { color: #dc2626; font-size: 13px; margin-left: 4px; }
+    .paper .fill { display: inline-block; min-width: 3em; text-align: center; border-bottom: 1px solid #111; padding: 0 4px; margin: 0 3px; }
+    .paper .fill.wrong { color: #dc2626; text-decoration: line-through; }
+    .paper .fix { color: #dc2626; font-weight: bold; margin-top: 2px; }
+    .paper .o { display: inline-block; margin-right: 18px; padding: 0 4px; }
+    .paper .o.ch { border: 1.5px solid #111; border-radius: 12px; }
+    .paper .o.cr { color: #dc2626; font-weight: bold; }
+    .paper .given { border-bottom: 1px solid #6b7280; margin-top: 2px; }
     @media print {
       @page { size: A4; margin: 14mm; }
       body { background: #fff; padding: 0; }
@@ -298,6 +313,38 @@
         return { type: 'blank', question: q.question, template: q.template, given: q.given, correct: q.correct, ok: q.ok, got: q.ok ? 1 : 0, max: 1, explain: q.explain };
       });
     }
+    function gradedQ(r, n) {
+      const mk = r.ok ? '✓' : (r.got > 0 ? '△' : '✗');
+      const pts = `<span class="gp">${r.got}/${r.max}</span>`;
+      let pre = '', body = '';
+      if (r.type === 'blank') {
+        const given = Array.isArray(r.given) ? r.given : [];
+        body = '<div class="pt">' + String(r.template).split('[blank]').map((p, j) => esc(p) + (j < r.correct.length
+          ? `<span class="fill ${String(given[j] || '').trim() === String(r.correct[j]).trim() ? '' : 'wrong'}">${esc(given[j] || '　')}</span>` : '')).join('') + '</div>';
+        if (!r.ok) body += `<div class="fix">正確答案：${esc(r.correct.join('、'))}</div>`;
+      } else if (r.type === 'mc') {
+        pre = `<span class="pa">（${r.given != null && r.given !== '' ? C4[r.given] : '　'}）</span>`;
+        body = '<div>' + r.options.map((o, j) => `<span class="o ${j === r.given ? 'ch' : ''} ${j === r.correct ? 'cr' : ''}">${C4[j]} ${esc(o)}${j === r.correct ? ' ✔' : ''}</span>`).join('') + '</div>';
+        if (!r.ok) body += `<div class="fix">正確答案：${C4[r.correct]}</div>`;
+      } else {
+        body = `<div class="given">${esc(r.given || '（空白）')}</div><div class="fix">參考答案：${esc(r.correct)}</div>`;
+      }
+      return `<div class="pq gq"><span class="mk">${mk}</span>${pre}<span class="pn">${n}.</span>${qt(r.question)}${pts}${body}` +
+        (r.comment ? `<div class="pe">講評：${esc(r.comment)}</div>` : '') + (r.explain ? `<div class="pe">解析：${esc(r.explain)}</div>` : '') + '</div>';
+    }
+    function resultPaper(r, title, items) {
+      const total = items.reduce((s, x) => s + (x.max || 0), 0) || 100;
+      const secs = groupBy(items, x => x.type).map(g => {
+        const got = g.idx.reduce((s, i) => s + (items[i].got || 0), 0), max = g.idx.reduce((s, i) => s + (items[i].max || 0), 0);
+        let inner;
+        try { inner = g.idx.map((i, n) => gradedQ(items[i], n + 1)).join(''); }
+        catch (e) { inner = g.idx.map((i, n) => card(items[i], n)).join(''); }
+        return `<div class="p-sec">${g.no}、${g.label}<span class="sub">（得 ${got} / ${max} 分）</span></div>` + inner;
+      }).join('');
+      return `<div class="paper view"><div class="p-title">${esc(title)}</div>` +
+        `<div class="p-head"><div class="p-lines"><div>姓名：<span class="line">${esc(r.student_name || '（未填姓名）')}</span></div><div>日期：<span class="line">${esc(new Date(r.created_at).toLocaleDateString('zh-TW'))}</span></div></div>` +
+        `<div class="p-scorebox"><div class="lbl">得分</div><div class="val">${esc(r.score)}<small>/${total}</small></div></div></div>` + (secs || '<div class="muted">沒有作答內容。</div>') + '</div>';
+    }
     function cardsHTML(items) {
       return groupBy(items, r => r.type).map(g => `<div class="sec-t">${g.no}、${g.label}</div>` + g.idx.map((i, n) => card(items[i], n)).join('')).join('');
     }
@@ -315,7 +362,7 @@
           return `<div class="rec"><div class="rec-head" onclick="var d=document.getElementById('d${i}');d.style.display=d.style.display==='block'?'none':'block'">
             <div><b>${esc(r.student_name || '（未填姓名）')}</b><br><span class="muted">${esc(names[r.exam_id] || r.exam_id)} · ${esc(new Date(r.created_at).toLocaleString('zh-TW'))}</span></div>
             <div style="display:flex;align-items:center;gap:8px"><div class="score ${cls}">${esc(r.score)} 分</div><button class="btn-sm btn-del" onclick="event.stopPropagation();delResult(${i})">刪除</button></div></div>
-            <div class="detail" id="d${i}">${cardsHTML(items) || '<div class="muted">沒有作答內容。</div>'}</div></div>`;
+            <div class="detail" id="d${i}">${resultPaper(r, names[r.exam_id] || r.exam_id, items)}</div></div>`;
         }).join('');
       } catch (e) { box.innerHTML = '<div class="err">讀取失敗：' + esc(e.message) + '</div>'; }
     }
