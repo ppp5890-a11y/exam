@@ -223,12 +223,33 @@
     // ---------- 登入 ----------
     async function login(pc) {
       passcode = pc;
-      try { await call({ action: 'check' }); localStorage.setItem('pc', pc); $('login').classList.add('hide'); $('app').classList.remove('hide'); loadResults(); loadExams(); loadUnits(); }
+      try { await call({ action: 'check' }); localStorage.setItem('pc', pc); $('login').classList.add('hide'); $('app').classList.remove('hide'); loadResults(); loadExams(); loadUnits(); updatePublishers(); }
       catch (e) { localStorage.removeItem('pc'); $('login').classList.remove('hide'); $('app').classList.add('hide'); $('loginMsg').innerText = e.message; }
     }
     $('loginBtn').onclick = () => login($('pc').value);
     $('pc').onkeydown = e => { if (e.key === 'Enter') login($('pc').value); };
     if (passcode) login(passcode);
+
+    // ---------- 版本選單：「何嘉仁」只在該年級＋科目真的有清單時才顯示 ----------
+    const PUBS = ['不指定', '康軒', '南一', '翰林', '何嘉仁'];
+    const ONLY_IF_LIST = ['何嘉仁'];
+    async function updatePublishers() {
+      const grade = $('grade').value, subject = $('subject').value;
+      const has = {};
+      await Promise.all(ONLY_IF_LIST.map(async p => {
+        try {
+          const rs = await Promise.all(['上學期', '下學期'].map(t => call({ action: 'units', publisher: p, grade, subject, term: t })));
+          has[p] = rs.some(r => (r.units || []).length > 0);
+        } catch (e) { has[p] = null; }
+      }));
+      if (grade !== $('grade').value || subject !== $('subject').value) return; // 查詢期間又換了選項，這次結果作廢
+      const existing = [...$('publisher').options].map(o => o.value), cur = $('publisher').value;
+      const show = PUBS.filter(p => !ONLY_IF_LIST.includes(p) || (has[p] === null ? existing.includes(p) : has[p]));
+      if (show.join() === existing.join()) return;
+      $('publisher').innerHTML = show.map(p => `<option>${p}</option>`).join('');
+      if (show.includes(cur)) $('publisher').value = cur;
+      else { $('publisher').value = '不指定'; loadUnits(); }
+    }
 
     // ---------- 單元清單 ----------
     let units = [];
@@ -249,6 +270,7 @@
       return sel.length ? sel : units;
     }
     ['grade', 'subject', 'publisher', 'term'].forEach(id => $(id).addEventListener('change', loadUnits));
+    ['grade', 'subject'].forEach(id => $(id).addEventListener('change', updatePublishers));
     $('editUnits').onclick = () => { $('unitText').value = units.map(u => u.t + '｜' + u.d).join('\n'); $('unitEdit').classList.remove('hide'); };
     $('saveUnits').onclick = async () => {
       const list = $('unitText').value.split('\n').map(s => s.trim()).filter(Boolean).map(s => { const [t, ...d] = s.split('｜'); return { t: t.trim(), d: d.join('｜').trim() }; });
